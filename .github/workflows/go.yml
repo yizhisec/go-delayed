@@ -3,44 +3,46 @@ name: Go
 on: [ push, pull_request ]
 
 jobs:
-  test:
-    runs-on: ${{ matrix.os }}
-    strategy:
+  test-ubuntu:
+    runs-on: ubuntu-latest
+    strategy: &strategy
       fail-fast: true
       matrix:
         go-version: [ '1.19', '1.20' ]
-        os: [ ubuntu-latest, macos-latest ]
 
-    # services:
-    #   redis:
-    #     image: redis
-    #     options: >-
-    #       --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
-    #     ports:
-    #       - 6379:6379
+    services:
+      redis:
+        image: redis
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+        ports:
+          - 6379:6379
 
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Set up Redis
-      uses: shogo82148/actions-setup-redis@v1
-
+    steps: &steps
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
         go-version: ${{ matrix.go-version }}
-
+    - name: Checkout code
+      uses: actions/checkout@v3
     - name: Test
       run: go test -covermode=atomic -coverprofile=coverage ./...
       env:
         REDIS_HOST: localhost
         REDIS_PORT: 6379
-
     - name: Upload code coverage report
       uses: codecov/codecov-action@v3
       with:
         files: coverage
         flags: unittests
-        name: codecov-golog
+        name: codecov-go-delayed
         verbose: true
+
+  test-macos:
+    runs-on: macos-latest
+    <<: *strategy
+
+    steps:
+    - name: Set up Redis
+      uses: shogo82148/actions-setup-redis@v1
+    <<: *steps
