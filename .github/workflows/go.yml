@@ -3,7 +3,6 @@ name: Go
 on: [ push, pull_request ]
 
 runner-job:
-
   services:
     redis:
       image: redis
@@ -15,6 +14,7 @@ runner-job:
       ports:
         - 6379:6379
 
+jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
@@ -34,7 +34,7 @@ runner-job:
     - name: Test
       run: go test -covermode=atomic -coverprofile=coverage ./...
       env:
-        REDIS_HOST: redis
+        REDIS_HOST: localhost
         REDIS_PORT: 6379
 
     - name: Upload code coverage report
