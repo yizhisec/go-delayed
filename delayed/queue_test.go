@@ -8,14 +8,14 @@ import (
 )
 
 func TestNewQueue(t *testing.T) {
-	q := NewQueue("1", "test", getRedisAddress(), "", 2)
+	q := NewQueue("test", NewRedisPool(":6379"))
 	if q == nil {
 		t.FailNow()
 	}
 }
 
 func TestQueueEnqueue(t *testing.T) {
-	q := NewQueue("1", "test", getRedisAddress(), "", 2)
+	q := NewQueue("test", NewRedisPool(":6379"))
 	defer q.Clear()
 
 	err := q.Enqueue(NewTaskOfFunc(1, f1, nil))
@@ -29,7 +29,7 @@ func TestQueueEnqueue(t *testing.T) {
 }
 
 func TestQueueLen(t *testing.T) {
-	q := NewQueue("1", "test", getRedisAddress(), "", 2)
+	q := NewQueue("test", NewRedisPool(":6379"))
 
 	count, err := q.Len()
 	if err != nil {
@@ -65,7 +65,7 @@ func TestQueueLen(t *testing.T) {
 }
 
 func TestQueueDequeue(t *testing.T) {
-	q := NewQueue("1", "test", getRedisAddress(), "", 2)
+	q := NewQueue("test", NewRedisPool(":6379"), DequeueTimeout(2))
 	defer q.Clear()
 
 	task, err := q.Dequeue()
@@ -123,7 +123,7 @@ func TestQueueDequeue(t *testing.T) {
 }
 
 func TestQueueRelease(t *testing.T) {
-	q := NewQueue("1", "test", getRedisAddress(), "", 2)
+	q := NewQueue("test", NewRedisPool(":6379"))
 	defer q.Clear()
 
 	conn := q.redis.Get()
@@ -213,7 +213,7 @@ func TestQueueRelease(t *testing.T) {
 }
 
 func TestQueueRequeueLost(t *testing.T) {
-	q := NewQueue("1", "test", getRedisAddress(), "", 2)
+	q := NewQueue("test", NewRedisPool(":6379"))
 	defer q.Clear()
 
 	for _, tt := range taskTestCases {

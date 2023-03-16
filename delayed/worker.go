@@ -16,21 +16,44 @@ const (
 	WorkerStatusStopping
 )
 
-type Worker struct {
-	id       string
-	queue    *Queue
-	handlers map[string]*Handler
-	status   atomic.Uint32
-	sigChan  chan os.Signal
+const defaultKeepAliveDuration uint16 = 15
+
+type WorkerOption func(*Worker)
+
+func KeepAliveDuration(s uint16) WorkerOption {
+	return func(w *Worker) {
+		if s > 0 {
+			w.keepAliveDuration = s
+		} else {
+			w.keepAliveDuration = defaultKeepAliveDuration
+		}
+	}
 }
 
-func NewWorker(name, redisAddr, redisPassword string, dequeueTimeout uint32) *Worker {
+type Worker struct {
+	id                string
+	queue             *Queue
+	handlers          map[string]*Handler
+	status            atomic.Uint32
+	keepAliveDuration uint16 // seconds
+	sigChan           chan os.Signal
+}
+
+func NewWorker(name string, queue *Queue, options ...WorkerOption) *Worker {
 	id := RandHexString(16)
-	return &Worker{
-		id:       id,
-		queue:    NewQueue(id, name, redisAddr, redisPassword, dequeueTimeout),
-		handlers: map[string]*Handler{},
+	queue.workerID = id
+	worker := &Worker{
+		id:                id,
+		queue:             queue,
+		handlers:          map[string]*Handler{},
+		keepAliveDuration: defaultKeepAliveDuration,
 	}
+
+	for _, option := range options {
+		option(worker)
+	}
+
+	return worker
 }
 
 func (w *Worker) RegisterHandlers(funcs ...interface{}) {
@@ -94,7 +117,7 @@ func (w *Worker) KeepAlive() {
 	w.keepAlive()
 
 	go func() {
-		ticker := time.NewTicker(time.Second * 15)
+		ticker := time.NewTicker(time.Second * time.Duration(w.keepAliveDuration))
 		defer ticker.Stop()
 
 		for w.status.Load() != WorkerStatusStopped { // should keep alive even stopping

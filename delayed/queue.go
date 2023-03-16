@@ -9,6 +9,9 @@ const (
 	idKeySuffix         = "_id"
 	notiKeySuffix       = "_noti"
 	processingKeySuffix = "_processing"
+
+	defaultDequeueTimeout   uint32 = 1000
+	defaultKeepAliveTimeout uint16 = 60
 )
 
 const (
@@ -46,12 +49,13 @@ return count`
 )
 
 type Queue struct {
-	workerID       string
-	name           string
-	idKey          string
-	notiKey        string
-	processingKey  string
-	dequeueTimeout uint32 // ms, must be larger than 1, redis BLPOP treats timeout equal or less than 0.001 second as 0 (forever)
+	workerID         string
+	name             string
+	idKey            string
+	notiKey          string
+	processingKey    string
+	dequeueTimeout   uint32 // ms, must be larger than 1, redis BLPOP treats timeout equal or less than 0.001 second as 0 (forever)
+	KeepAliveTimeout uint16
 
 	redis             *redis.Pool
 	dequeueScript     *redis.Script
@@ -61,25 +65,53 @@ type Queue struct {
 	handlers map[string]*Handler
 }
 
-func NewQueue(workerID, name, redisAddr, redisPassword string, dequeueTimeout uint32) *Queue {
-	return &Queue{
-		workerID:          workerID,
+type QueueOption func(*Queue)
+
+func DequeueTimeout(ms uint32) QueueOption {
+	return func(q *Queue) {
+		if ms > 1 {
+			q.dequeueTimeout = ms
+		} else {
+			q.dequeueTimeout = defaultDequeueTimeout
+		}
+	}
+}
+
+func KeepAliveTimeout(s uint16) QueueOption {
+	return func(q *Queue) {
+		if s > 1 {
+			q.KeepAliveTimeout = s
+		} else if s == 0 {
+			q.KeepAliveTimeout = defaultKeepAliveTimeout
+		}
+	}
+}
+
+func NewQueue(name string, redisPool *redis.Pool, options ...QueueOption) *Queue {
+	queue := &Queue{
 		name:              name,
 		idKey:             name + idKeySuffix,
 		notiKey:           name + notiKeySuffix,
 		processingKey:     name + processingKeySuffix,
-		dequeueTimeout:    dequeueTimeout,
-		redis:             NewRedisPool(redisAddr, redisPassword),
+		dequeueTimeout:    defaultDequeueTimeout,
+		KeepAliveTimeout:  defaultKeepAliveTimeout,
+		redis:             redisPool,
 		dequeueScript:     redis.NewScript(2, dequeueScript),
 		requeueLostScript: redis.NewScript(3, requeueLostScript),
 	}
+
+	for _, option := range options {
+		option(queue)
+	}
+
+	return queue
 }
 
 func (q *Queue) keepAlive() error {
 	conn := q.redis.Get()
 	defer conn.Close()
 
-	_, err := conn.Do("SETEX", q.workerID, 60, 1)
+	_, err := conn.Do("SETEX", q.workerID, q.KeepAliveTimeout, 1)
 	return err
 }
 

@@ -16,8 +16,8 @@ type redisArgs struct {
 	Args    []interface{}
 }
 
-func panicFunc(a interface{}) {
-	panic(a)
+func panicFunc(e interface{}) {
+	panic(e)
 }
 
 func redisCall(arg *redisArgs) {
@@ -34,7 +34,7 @@ func redisCall2(arg *redisArgs) {
 }
 
 func TestWorkerRegisterHandlers(t *testing.T) {
-	w := NewWorker("test", getRedisAddress(), "", 2)
+	w := NewWorker("test", NewQueue("test", NewRedisPool(":6379")))
 	w.RegisterHandlers(f1, f2, f3)
 	if len(w.handlers) != 3 {
 		t.FailNow()
@@ -49,17 +49,17 @@ func TestWorkerRun(t *testing.T) {
 	initLogger(golog.DebugLevel)
 
 	redisAddr := getRedisAddress()
-	w := NewWorker("test", redisAddr, "", 2)
+	w := NewWorker("test", NewQueue("test", NewRedisPool(":6379"), DequeueTimeout(2)))
 	w.RegisterHandlers(panicFunc, redisCall)
 
-	q := NewQueue("1", "test", redisAddr, "", 2)
+	q := NewQueue("test", NewRedisPool(":6379"))
 	conn := q.redis.Get()
 	defer conn.Close()
 	defer q.Clear()
 
 	key := "test" + w.id
 	defer conn.Do("DEL", key)
-	task := NewTaskOfFunc(0, panicFunc, 1)
+	task := NewTaskOfFunc(0, panicFunc, "test")
 	q.Enqueue(task)
 	task = NewTaskOfFunc(0, redisCall2, redisArgs{Address: redisAddr, Cmd: "RPUSH", Args: []interface{}{key, 2}})
 	q.Enqueue(task)
@@ -118,10 +118,10 @@ func TestWorkerRun(t *testing.T) {
 func TestWorkerSignal(t *testing.T) {
 	redisAddr := getRedisAddress()
 
-	w := NewWorker("test", redisAddr, "", 2)
+	w := NewWorker("test", NewQueue("test", NewRedisPool(":6379"), DequeueTimeout(2)))
 	w.RegisterHandlers(redisCall)
 
-	q := NewQueue("1", "test", redisAddr, "", 2)
+	q := NewQueue("test", NewRedisPool(":6379"))
 	conn := q.redis.Get()
 	defer conn.Close()
 	defer q.Clear()
