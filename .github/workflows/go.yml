@@ -5,7 +5,7 @@ on: [ push, pull_request ]
 jobs:
   test-ubuntu:
     runs-on: ubuntu-latest
-    strategy: &strategy
+    strategy:
       fail-fast: true
       matrix:
         go-version: [ '1.19', '1.20' ]
@@ -18,13 +18,13 @@ jobs:
         ports:
           - 6379:6379
 
-    steps: &steps
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
         go-version: ${{ matrix.go-version }}
-    - name: Checkout code
-      uses: actions/checkout@v3
     - name: Test
       run: go test -covermode=atomic -coverprofile=coverage ./...
       env:
@@ -40,9 +40,22 @@ jobs:
 
   test-macos:
     runs-on: macos-latest
-    <<: *strategy
+    strategy:
+      fail-fast: true
+      matrix:
+        go-version: [ '1.19', '1.20' ]
 
     steps:
-    - name: Set up Redis
+    - name: Checkout code
+      uses: actions/checkout@v3
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ matrix.go-version }}
+    - name: Set up Redis  # macos cannot use services
       uses: shogo82148/actions-setup-redis@v1
-    - *steps
+    - name: Test
+      run: go test ./...
+      env:
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
