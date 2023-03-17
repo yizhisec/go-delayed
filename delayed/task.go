@@ -3,6 +3,7 @@ package delayed
 import (
 	"bytes"
 	"reflect"
+	"runtime"
 
 	"github.com/keakon/golog/log"
 	"github.com/shamaton/msgpack/v2"
@@ -33,7 +34,12 @@ func NewTask(id uint64, funcPath string, arg interface{}) *GoTask {
 }
 
 func NewTaskOfFunc(id uint64, f, arg interface{}) *GoTask {
-	_, _, funcPath := parseFunc(f)
+	fn := reflect.ValueOf(f)
+	if fn.Kind() != reflect.Func {
+		return nil
+	}
+
+	funcPath := runtime.FuncForPC(fn.Pointer()).Name()
 	if funcPath == "" {
 		return nil
 	}

@@ -16,27 +16,6 @@ type Handler struct {
 	argType  reflect.Type
 }
 
-var handlerCache = map[interface{}]*Handler{}
-
-func parseFunc(f interface{}) (fn reflect.Value, fnType reflect.Type, path string) {
-	fn = reflect.ValueOf(f)
-	if fn.Kind() != reflect.Func {
-		return
-	}
-
-	fnType = fn.Type()
-	if fnType.NumIn() != 1 {
-		return
-	}
-
-	path = runtime.FuncForPC(fn.Pointer()).Name()
-	if path == "" {
-		return
-	}
-
-	return
-}
-
 func NewHandler(f interface{}) (h *Handler) {
 	fn := reflect.ValueOf(f)
 	if fn.Kind() != reflect.Func {

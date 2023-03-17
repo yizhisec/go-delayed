@@ -34,7 +34,7 @@ func redisCall2(arg *redisArgs) {
 }
 
 func TestWorkerRegisterHandlers(t *testing.T) {
-	w := NewWorker("test", NewQueue("test", NewRedisPool(":6379")))
+	w := NewWorker("test", NewQueue("test", NewRedisPool(redisAddr)))
 	w.RegisterHandlers(f1, f2, f3)
 	if len(w.handlers) != 3 {
 		t.FailNow()
@@ -48,11 +48,10 @@ func TestWorkerRegisterHandlers(t *testing.T) {
 func TestWorkerRun(t *testing.T) {
 	initLogger(golog.DebugLevel)
 
-	redisAddr := getRedisAddress()
-	w := NewWorker("test", NewQueue("test", NewRedisPool(":6379"), DequeueTimeout(2)))
+	w := NewWorker("test", NewQueue("test", NewRedisPool(redisAddr), DequeueTimeout(2)))
 	w.RegisterHandlers(panicFunc, redisCall)
 
-	q := NewQueue("test", NewRedisPool(":6379"))
+	q := NewQueue("test", NewRedisPool(redisAddr))
 	conn := q.redis.Get()
 	defer conn.Close()
 	defer q.Clear()
@@ -116,12 +115,10 @@ func TestWorkerRun(t *testing.T) {
 }
 
 func TestWorkerSignal(t *testing.T) {
-	redisAddr := getRedisAddress()
-
-	w := NewWorker("test", NewQueue("test", NewRedisPool(":6379"), DequeueTimeout(2)))
+	w := NewWorker("test", NewQueue("test", NewRedisPool(redisAddr), DequeueTimeout(2)))
 	w.RegisterHandlers(redisCall)
 
-	q := NewQueue("test", NewRedisPool(":6379"))
+	q := NewQueue("test", NewRedisPool(redisAddr))
 	conn := q.redis.Get()
 	defer conn.Close()
 	defer q.Clear()
@@ -139,4 +136,76 @@ func TestWorkerSignal(t *testing.T) {
 	}()
 
 	w.Run()
+}
+
+func noArgFunc()                   {}
+func intFunc(int)                  {}
+func intPFunc(*int)                {}
+func int2Func(int, int)            {}
+func structFunc(testArg)           {}
+func structPFunc(*testArg)         {}
+func struct2Func(testArg, testArg) {}
+
+func BenchmarkWorkerExecute(b *testing.B) {
+	w := Worker{handlers: map[string]*Handler{}}
+
+	tests := []struct {
+		name string
+		fn   interface{}
+		arg  interface{}
+	}{
+		{
+			name: "no arg",
+			fn:   noArgFunc,
+			arg:  nil,
+		},
+		{
+			name: "int arg",
+			fn:   intFunc,
+			arg:  1,
+		},
+		{
+			name: "*int arg",
+			fn:   intPFunc,
+			arg:  new(int),
+		},
+		{
+			name: "int 2 args",
+			fn:   int2Func,
+			arg:  []int{1, 2},
+		},
+		{
+			name: "struct arg",
+			fn:   structFunc,
+			arg:  testArg{},
+		},
+		{
+			name: "*struct arg",
+			fn:   structPFunc,
+			arg:  &testArg{},
+		},
+		{
+			name: "struct 2 args",
+			fn:   struct2Func,
+			arg:  []testArg{{}, {}},
+		},
+	}
+
+	for _, tt := range tests {
+		w.RegisterHandlers(tt.fn)
+	}
+
+	for _, tt := range tests {
+		task := NewTaskOfFunc(0, tt.fn, nil)
+		err := task.Serialize()
+		if err != nil {
+			b.FailNow()
+		}
+		b.ResetTimer()
+		b.Run(tt.name, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				w.Execute(task)
+			}
+		})
+	}
 }
