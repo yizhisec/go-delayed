@@ -108,7 +108,6 @@ func (w *Worker) unregisterSignals() {
 func (w *Worker) Execute(t *GoTask) {
 	h, ok := w.handlers[t.raw.FuncPath]
 	if ok {
-		defer Recover()
 		h.Call(t.raw.Payload)
 	}
 }

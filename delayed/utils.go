@@ -9,8 +9,8 @@ import (
 )
 
 func Recover() {
-	if err := recover(); err != nil {
-		log.Errorf("got a panic: %v", err)
+	if p := recover(); p != nil {
+		log.Errorf("got a panic: %v", p)
 	}
 }
 
