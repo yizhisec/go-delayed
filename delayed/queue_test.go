@@ -3,6 +3,7 @@ package delayed
 import (
 	"bytes"
 	"testing"
+	"time"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -66,7 +67,7 @@ func TestQueueLen(t *testing.T) {
 }
 
 func TestQueueDequeue(t *testing.T) {
-	q := NewQueue("test", NewRedisPool(redisAddr), DequeueTimeout(2))
+	q := NewQueue("test", NewRedisPool(redisAddr), DequeueTimeout(time.Millisecond*2))
 	defer q.Clear()
 
 	task, err := q.Dequeue()

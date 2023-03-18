@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/keakon/golog"
@@ -50,7 +51,7 @@ func TestWorkerRegisterHandlers(t *testing.T) {
 func TestWorkerRun(t *testing.T) {
 	initLogger(golog.DebugLevel)
 
-	w := NewWorker("test", NewQueue("test", NewRedisPool(redisAddr), DequeueTimeout(2)))
+	w := NewWorker("test", NewQueue("test", NewRedisPool(redisAddr), DequeueTimeout(time.Millisecond*2)), KeepAliveDuration(time.Second))
 	w.RegisterHandlers(panicFunc, redisCall)
 
 	q := NewQueue("test", NewRedisPool(redisAddr))
@@ -117,7 +118,7 @@ func TestWorkerRun(t *testing.T) {
 }
 
 func TestWorkerSignal(t *testing.T) {
-	w := NewWorker("test", NewQueue("test", NewRedisPool(redisAddr), DequeueTimeout(2)))
+	w := NewWorker("test", NewQueue("test", NewRedisPool(redisAddr), DequeueTimeout(time.Millisecond*2)))
 	w.RegisterHandlers(syscall.Kill)
 
 	q := NewQueue("test", NewRedisPool(redisAddr))
@@ -166,17 +167,17 @@ func BenchmarkWorkerExecute(b *testing.B) {
 		{
 			name: "struct arg",
 			fn:   structFunc,
-			arg:  testArg{},
+			arg:  tArg,
 		},
 		{
 			name: "*struct arg",
 			fn:   structPFunc,
-			arg:  &testArg{},
+			arg:  &tArg,
 		},
 		{
 			name: "struct 2 args",
 			fn:   struct2Func,
-			arg:  []testArg{{}, {}},
+			arg:  []testArg{{}, tArg},
 		},
 	}
 

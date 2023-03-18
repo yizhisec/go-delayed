@@ -13,7 +13,6 @@ type Handler struct {
 	fn       reflect.Value
 	path     string
 	argCount int
-	argType  reflect.Type
 	arg      interface{}
 	args     []reflect.Value
 }
@@ -40,8 +39,8 @@ func NewHandler(f interface{}) (h *Handler) {
 	if h.argCount == 0 {
 		h.args = []reflect.Value{}
 	} else if h.argCount == 1 {
-		h.argType = fnType.In(0)
-		arg := reflect.New(h.argType)
+		argType := fnType.In(0)
+		arg := reflect.New(argType)
 		h.arg = arg.Interface()
 		h.args = []reflect.Value{arg.Elem()}
 	} else if h.argCount > 1 {
@@ -53,8 +52,8 @@ func NewHandler(f interface{}) (h *Handler) {
 				Type: arg,
 			}
 		}
-		h.argType = reflect.StructOf(fields)
-		arg := reflect.New(h.argType)
+		argType := reflect.StructOf(fields)
+		arg := reflect.New(argType)
 		h.arg = arg.Interface()
 		h.args = make([]reflect.Value, h.argCount)
 		for i := 0; i < h.argCount; i++ {

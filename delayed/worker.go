@@ -16,14 +16,14 @@ const (
 	WorkerStatusStopping
 )
 
-const defaultKeepAliveDuration uint16 = 15
+const defaultKeepAliveDuration = 15 * time.Second
 
 type WorkerOption func(*Worker)
 
-func KeepAliveDuration(s uint16) WorkerOption {
+func KeepAliveDuration(d time.Duration) WorkerOption {
 	return func(w *Worker) {
-		if s > 0 {
-			w.keepAliveDuration = s
+		if d > 0 {
+			w.keepAliveDuration = d
 		} else {
 			w.keepAliveDuration = defaultKeepAliveDuration
 		}
@@ -35,7 +35,7 @@ type Worker struct {
 	queue             *Queue
 	handlers          map[string]*Handler
 	status            uint32
-	keepAliveDuration uint16 // seconds
+	keepAliveDuration time.Duration
 	sigChan           chan os.Signal
 }
 
@@ -124,7 +124,7 @@ func (w *Worker) KeepAlive() {
 	w.keepAlive()
 
 	go func() {
-		ticker := time.NewTicker(time.Second * time.Duration(w.keepAliveDuration))
+		ticker := time.NewTicker(w.keepAliveDuration)
 		defer ticker.Stop()
 
 		for atomic.LoadUint32(&w.status) != WorkerStatusStopped { // should keep alive even stopping

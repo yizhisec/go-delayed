@@ -59,7 +59,6 @@ func TestNewHandler(t *testing.T) {
 			want: &Handler{
 				fn:       reflect.ValueOf(f1),
 				argCount: 1,
-				argType:  reflect.TypeOf(testArg{}),
 				path:     "github.com/yizhisec/go-delayed/delayed.f1",
 			},
 		},
@@ -69,7 +68,6 @@ func TestNewHandler(t *testing.T) {
 			want: &Handler{
 				fn:       reflect.ValueOf(f2),
 				argCount: 1,
-				argType:  reflect.TypeOf(&testArg{}),
 				path:     "github.com/yizhisec/go-delayed/delayed.f2",
 			},
 		},
@@ -79,7 +77,6 @@ func TestNewHandler(t *testing.T) {
 			want: &Handler{
 				fn:       reflect.ValueOf(f3),
 				argCount: 1,
-				argType:  reflect.TypeOf(0),
 				path:     "github.com/yizhisec/go-delayed/delayed.f3",
 			},
 		},
@@ -89,7 +86,6 @@ func TestNewHandler(t *testing.T) {
 			want: &Handler{
 				fn:       reflect.ValueOf(f4),
 				argCount: 1,
-				argType:  reflect.TypeOf(new(int)),
 				path:     "github.com/yizhisec/go-delayed/delayed.f4",
 			},
 		},
@@ -112,9 +108,6 @@ func TestNewHandler(t *testing.T) {
 			}
 			if got.argCount != tt.want.argCount {
 				t.Errorf("NewHandler().argCount = %v, want %v", got.argCount, tt.want.argCount)
-			}
-			if got.argType != tt.want.argType {
-				t.Errorf("NewHandler().argType = %v, want %v", got.argType, tt.want.argType)
 			}
 			if got.path != tt.want.path {
 				t.Errorf("NewHandler().path = %v, want %v", got.path, tt.want.path)
@@ -167,18 +160,11 @@ func TestNewHandler(t *testing.T) {
 			if got.path != tt.wantPath {
 				t.Errorf("NewHandler().path = %v, want %v", got.fn, tt.wantPath)
 			}
-			fnType := got.fn.Type()
-			for i := 0; i < tt.wantArgCount; i++ {
-				if got.argType.Field(i).Type != fnType.In(i) {
-					t.Errorf("NewHandler().argType[i] = %v, want %v", got.argType.Field(i).Type, fnType.In(i))
-				}
-			}
 		})
 	}
 }
 
 func TestHandlerCall(t *testing.T) {
-	arg := testArg{A: 1, B: "test"}
 	tests := []struct {
 		name string
 		f    interface{}
@@ -188,7 +174,7 @@ func TestHandlerCall(t *testing.T) {
 		{
 			name: "struct arg",
 			f:    f1,
-			args: []interface{}{arg},
+			args: []interface{}{tArg},
 			want: 5,
 		},
 		{
@@ -200,7 +186,7 @@ func TestHandlerCall(t *testing.T) {
 		{
 			name: "*struct arg",
 			f:    f2,
-			args: []interface{}{&arg},
+			args: []interface{}{&tArg},
 			want: 5,
 		},
 		{
@@ -236,13 +222,13 @@ func TestHandlerCall(t *testing.T) {
 		{
 			name: "struct args",
 			f:    f7,
-			args: []interface{}{arg, arg},
+			args: []interface{}{tArg, tArg},
 			want: 10,
 		},
 		{
 			name: "*struct args",
 			f:    f8,
-			args: []interface{}{&arg, &arg},
+			args: []interface{}{&tArg, &tArg},
 			want: 10,
 		},
 	}

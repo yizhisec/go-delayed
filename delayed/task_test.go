@@ -135,13 +135,13 @@ func TestPyTaskSerialize(t *testing.T) {
 			name:     "struct kwargs",
 			funcPath: "test",
 			args:     nil,
-			kwArgs:   testArg{A: 1, B: "test"},
+			kwArgs:   tArg,
 		},
 		{
 			name:     "args + kwargs",
 			funcPath: "test",
 			args:     []interface{}{1, "2"},
-			kwArgs:   testArg{A: 1, B: "test"},
+			kwArgs:   tArg,
 		},
 	}
 
