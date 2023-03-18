@@ -27,7 +27,7 @@ jobs:
         go-version: ${{ matrix.go-version }}
     - name: Test with coverage
       if: ${{ matrix.go-version == '1.20' }}
-      run: go test -covermode=atomic -coverprofile=coverage ./...
+      run: go test -benchmem -bench=. -covermode=atomic -coverprofile=coverage ./...
     - name: Upload code coverage report
       if: ${{ matrix.go-version == '1.20' }}
       uses: codecov/codecov-action@v3

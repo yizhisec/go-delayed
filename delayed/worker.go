@@ -75,6 +75,14 @@ func (w *Worker) Run() {
 	defer w.unregisterSignals()
 
 	for w.status.Load() == WorkerStatusRunning {
+		w.run()
+	}
+}
+
+func (w *Worker) run() {
+	defer Recover() // try recover() out of execute() to reduce its overhead
+
+	for w.status.Load() == WorkerStatusRunning {
 		task, err := w.queue.Dequeue()
 		if err != nil {
 			log.Errorf("dequeue task error: %v", err)
@@ -108,7 +116,6 @@ func (w *Worker) unregisterSignals() {
 func (w *Worker) Execute(t *GoTask) {
 	h, ok := w.handlers[t.raw.FuncPath]
 	if ok {
-		defer Recover()
 		h.Call(t.raw.Payload)
 	}
 }
