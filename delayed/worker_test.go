@@ -33,6 +33,8 @@ func redisCall2(arg *redisArgs) {
 	redisCall(arg)
 }
 
+var redisCall3 = redisCall
+
 func TestWorkerRegisterHandlers(t *testing.T) {
 	w := NewWorker("test", NewQueue("test", NewRedisPool(redisAddr)))
 	w.RegisterHandlers(f1, f2, f3)
@@ -58,11 +60,11 @@ func TestWorkerRun(t *testing.T) {
 
 	key := "test" + w.id
 	defer conn.Do("DEL", key)
-	task := NewGoTaskOfFunc(0, panicFunc, "test")
+	task := NewGoTaskOfFunc(panicFunc, "test")
 	q.Enqueue(task)
-	task = NewGoTaskOfFunc(0, redisCall2, redisArgs{Address: redisAddr, Cmd: "RPUSH", Args: []interface{}{key, 2}})
+	task = NewGoTaskOfFunc(redisCall2, redisArgs{Address: redisAddr, Cmd: "RPUSH", Args: []interface{}{key, 2}}) // skipped because of not registered
 	q.Enqueue(task)
-	task = NewGoTaskOfFunc(0, redisCall, redisArgs{Address: redisAddr, Cmd: "RPUSH", Args: []interface{}{key, 1}})
+	task = NewGoTaskOfFunc(redisCall3, redisArgs{Address: redisAddr, Cmd: "RPUSH", Args: []interface{}{key, 1}}) // same as call redisCall
 	q.Enqueue(task)
 
 	count, err := q.Len()
@@ -119,7 +121,7 @@ func TestWorkerSignal(t *testing.T) {
 	w.RegisterHandlers(syscall.Kill)
 
 	q := NewQueue("test", NewRedisPool(redisAddr))
-	task := NewGoTaskOfFunc(0, syscall.Kill, []interface{}{os.Getpid(), syscall.SIGHUP})
+	task := NewGoTaskOfFunc(syscall.Kill, []interface{}{os.Getpid(), syscall.SIGHUP})
 	q.Enqueue(task)
 
 	w.Run()
@@ -183,8 +185,8 @@ func BenchmarkWorkerExecute(b *testing.B) {
 	}
 
 	for _, tt := range tests {
-		task := NewGoTaskOfFunc(0, tt.fn, nil)
-		err := task.Serialize()
+		task := NewGoTaskOfFunc(tt.fn, nil)
+		_, err := task.Serialize()
 		if err != nil {
 			b.FailNow()
 		}

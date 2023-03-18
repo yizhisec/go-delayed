@@ -18,11 +18,11 @@ func TestQueueEnqueue(t *testing.T) {
 	q := NewQueue("test", NewRedisPool(redisAddr))
 	defer q.Clear()
 
-	err := q.Enqueue(NewGoTaskOfFunc(1, f1, nil))
+	err := q.Enqueue(NewGoTaskOfFunc(f1, nil))
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = q.Enqueue(NewGoTaskOfFunc(1, f1, tArg))
+	err = q.Enqueue(NewGoTaskOfFunc(f1, tArg))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,8 @@ func TestQueueLen(t *testing.T) {
 	}
 
 	for i, tt := range taskTestCases {
-		task := NewGoTask(tt.id, tt.funcPath, tt.arg)
+		task := NewGoTask(tt.funcPath, tt.arg)
+		task.setID(tt.id)
 		err := q.Enqueue(task)
 		if err != nil {
 			t.Fatal(err)
@@ -78,7 +79,8 @@ func TestQueueDequeue(t *testing.T) {
 
 	for _, tt := range taskTestCases {
 		t.Run(tt.name, func(t *testing.T) {
-			task1 := NewGoTask(tt.id, tt.funcPath, tt.arg)
+			task1 := NewGoTask(tt.funcPath, tt.arg)
+			task1.setID(tt.id)
 			err := q.Enqueue(task1)
 			if err != nil {
 				t.Fatal(err)
@@ -102,7 +104,8 @@ func TestQueueDequeue(t *testing.T) {
 	q.Clear()
 	tasks := []*GoTask{}
 	for _, tt := range taskTestCases {
-		task := NewGoTask(tt.id, tt.funcPath, tt.arg)
+		task := NewGoTask(tt.funcPath, tt.arg)
+		task.setID(tt.id)
 		err := q.Enqueue(task)
 		if err != nil {
 			t.Fatal(err)
@@ -130,7 +133,8 @@ func TestQueueRelease(t *testing.T) {
 	defer conn.Close()
 
 	for _, tt := range taskTestCases {
-		task := NewGoTask(tt.id, tt.funcPath, tt.arg)
+		task := NewGoTask(tt.funcPath, tt.arg)
+		task.setID(tt.id)
 		err := q.Enqueue(task)
 		if err != nil {
 			t.Fatal(err)
@@ -217,7 +221,8 @@ func TestQueueRequeueLost(t *testing.T) {
 	defer q.Clear()
 
 	for _, tt := range taskTestCases {
-		task := NewGoTask(tt.id, tt.funcPath, tt.arg)
+		task := NewGoTask(tt.funcPath, tt.arg)
+		task.setID(tt.id)
 		q.Enqueue(task)
 		q.Dequeue()
 	}
@@ -268,7 +273,8 @@ func TestQueueRequeueLost(t *testing.T) {
 
 	q.keepAlive()
 	tt := taskTestCases[0]
-	task = NewGoTask(tt.id, tt.funcPath, tt.arg)
+	task = NewGoTask(tt.funcPath, tt.arg)
+	task.setID(tt.id)
 	q.Enqueue(task)
 	q.Dequeue()
 	assertLostLen(0)

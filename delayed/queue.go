@@ -153,12 +153,11 @@ func (q *Queue) Enqueue(task Task) (err error) {
 
 	data := task.getData()
 	if len(data) == 0 {
-		err = task.Serialize()
+		data, err = task.Serialize()
 		if err != nil {
 			log.Errorf("serialize task failed: %v", err)
 			return
 		}
-		data = task.getData()
 	}
 
 	err = conn.Send("RPUSH", q.name, data)
