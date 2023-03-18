@@ -41,13 +41,13 @@ var (
 )
 
 func TestGoTaskSerialize(t *testing.T) {
-	task1 := NewTask(1, "test", nil)
+	task1 := NewGoTask(1, "test", nil)
 	err := task1.Serialize()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	task2 := NewTask(2, "test", tArg)
+	task2 := NewGoTask(2, "test", tArg)
 	err = task2.Serialize()
 	if err != nil {
 		t.Fatal(err)
@@ -57,7 +57,7 @@ func TestGoTaskSerialize(t *testing.T) {
 		t.FailNow()
 	}
 
-	task3 := NewTask(3, "test", &tArg)
+	task3 := NewGoTask(3, "test", &tArg)
 	err = task3.Serialize()
 	if err != nil {
 		t.Fatal(err)
@@ -71,8 +71,8 @@ func TestGoTaskSerialize(t *testing.T) {
 func TestDeserializeGoTask(t *testing.T) {
 	for _, tt := range taskTestCases {
 		t.Run(tt.name, func(t *testing.T) {
-			task1 := NewTask(tt.id, tt.funcPath, tt.arg)
-			task2 := NewTask(tt.id, tt.funcPath, tt.arg)
+			task1 := NewGoTask(tt.id, tt.funcPath, tt.arg)
+			task2 := NewGoTask(tt.id, tt.funcPath, tt.arg)
 
 			err := task1.Serialize()
 			if err != nil {

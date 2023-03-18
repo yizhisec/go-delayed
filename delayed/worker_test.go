@@ -58,11 +58,11 @@ func TestWorkerRun(t *testing.T) {
 
 	key := "test" + w.id
 	defer conn.Do("DEL", key)
-	task := NewTaskOfFunc(0, panicFunc, "test")
+	task := NewGoTaskOfFunc(0, panicFunc, "test")
 	q.Enqueue(task)
-	task = NewTaskOfFunc(0, redisCall2, redisArgs{Address: redisAddr, Cmd: "RPUSH", Args: []interface{}{key, 2}})
+	task = NewGoTaskOfFunc(0, redisCall2, redisArgs{Address: redisAddr, Cmd: "RPUSH", Args: []interface{}{key, 2}})
 	q.Enqueue(task)
-	task = NewTaskOfFunc(0, redisCall, redisArgs{Address: redisAddr, Cmd: "RPUSH", Args: []interface{}{key, 1}})
+	task = NewGoTaskOfFunc(0, redisCall, redisArgs{Address: redisAddr, Cmd: "RPUSH", Args: []interface{}{key, 1}})
 	q.Enqueue(task)
 
 	count, err := q.Len()
@@ -119,7 +119,7 @@ func TestWorkerSignal(t *testing.T) {
 	w.RegisterHandlers(syscall.Kill)
 
 	q := NewQueue("test", NewRedisPool(redisAddr))
-	task := NewTaskOfFunc(0, syscall.Kill, []interface{}{os.Getpid(), syscall.SIGHUP})
+	task := NewGoTaskOfFunc(0, syscall.Kill, []interface{}{os.Getpid(), syscall.SIGHUP})
 	q.Enqueue(task)
 
 	w.Run()
@@ -183,7 +183,7 @@ func BenchmarkWorkerExecute(b *testing.B) {
 	}
 
 	for _, tt := range tests {
-		task := NewTaskOfFunc(0, tt.fn, nil)
+		task := NewGoTaskOfFunc(0, tt.fn, nil)
 		err := task.Serialize()
 		if err != nil {
 			b.FailNow()

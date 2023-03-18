@@ -138,28 +138,30 @@ func (q *Queue) Len() (count int, err error) {
 	return redis.Int(conn.Do("LLEN", q.name))
 }
 
-func (q *Queue) Enqueue(task *GoTask) (err error) {
+func (q *Queue) Enqueue(task Task) (err error) {
 	conn := q.redis.Get()
 	defer conn.Close()
 
-	if task.raw.ID == 0 {
-		id, err := redis.Int64(conn.Do("INCR", q.idKey))
+	if task.getID() == 0 {
+		id, err := redis.Uint64(conn.Do("INCR", q.idKey))
 		if err != nil {
 			log.Errorf("enqueue task failed: %v", err)
 			return err
 		}
-		task.raw.ID = uint64(id)
+		task.setID(id)
 	}
 
-	if len(task.data) == 0 {
+	data := task.getData()
+	if len(data) == 0 {
 		err = task.Serialize()
 		if err != nil {
 			log.Errorf("serialize task failed: %v", err)
 			return
 		}
+		data = task.getData()
 	}
 
-	err = conn.Send("RPUSH", q.name, task.data)
+	err = conn.Send("RPUSH", q.name, data)
 	if err != nil {
 		return
 	}

@@ -9,6 +9,13 @@ import (
 	"github.com/shamaton/msgpack/v2"
 )
 
+type Task interface {
+	Serialize() error
+	getID() uint64
+	setID(uint64)
+	getData() []byte
+}
+
 type RawGoTask struct {
 	ID       uint64
 	FuncPath string
@@ -21,9 +28,7 @@ type GoTask struct {
 	data []byte // serialized data
 }
 
-var goTaskExportFieldsCount = reflect.TypeOf(RawGoTask{}).NumField()
-
-func NewTask(id uint64, funcPath string, arg interface{}) *GoTask {
+func NewGoTask(id uint64, funcPath string, arg interface{}) *GoTask {
 	return &GoTask{
 		raw: RawGoTask{
 			ID:       id,
@@ -33,7 +38,7 @@ func NewTask(id uint64, funcPath string, arg interface{}) *GoTask {
 	}
 }
 
-func NewTaskOfFunc(id uint64, f, arg interface{}) *GoTask {
+func NewGoTaskOfFunc(id uint64, f, arg interface{}) *GoTask {
 	fn := reflect.ValueOf(f)
 	if fn.Kind() != reflect.Func {
 		return nil
@@ -70,7 +75,6 @@ func (t *GoTask) Serialize() (err error) {
 	t.data, err = msgpack.MarshalAsArray(&t.raw)
 	if err != nil {
 		log.Errorf("serialize task.data error: %v", err)
-		return
 	}
 	return
 }
@@ -85,4 +89,58 @@ func DeserializeGoTask(data []byte) (task *GoTask, err error) {
 		return
 	}
 	return t, nil
+}
+
+func (t *GoTask) getID() uint64 {
+	return t.raw.ID
+}
+
+func (t *GoTask) setID(id uint64) {
+	t.raw.ID = id
+}
+func (t *GoTask) getData() []byte {
+	return t.data
+}
+
+type RawPyTask struct {
+	ID       uint64
+	FuncPath string
+	Args     interface{} // must be slice, array or nil
+	KwArgs   interface{} // must be map, struct or nil
+}
+
+type PyTask struct {
+	raw  RawPyTask
+	data []byte // serialized data
+}
+
+func NewPyTask(id uint64, funcPath string, args, kwArgs interface{}) *PyTask {
+	return &PyTask{
+		raw: RawPyTask{
+			ID:       id,
+			FuncPath: funcPath,
+			Args:     args,
+			KwArgs:   kwArgs,
+		},
+	}
+}
+
+func (t *PyTask) Serialize() (err error) {
+	t.data, err = msgpack.MarshalAsArray(&t.raw)
+	if err != nil {
+		log.Errorf("serialize task.data error: %v", err)
+	}
+	return
+}
+
+func (t *PyTask) getID() uint64 {
+	return t.raw.ID
+}
+
+func (t *PyTask) setID(id uint64) {
+	t.raw.ID = id
+}
+
+func (t *PyTask) getData() []byte {
+	return t.data
 }
