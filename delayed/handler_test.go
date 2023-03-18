@@ -106,8 +106,18 @@ func TestNewHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewHandler(tt.f); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewHandler() = %v, want %v", got, tt.want)
+			got := NewHandler(tt.f)
+			if got.fn != tt.want.fn {
+				t.Errorf("NewHandler().fn = %v, want %v", got.fn, tt.want.fn)
+			}
+			if got.argCount != tt.want.argCount {
+				t.Errorf("NewHandler().argCount = %v, want %v", got.argCount, tt.want.argCount)
+			}
+			if got.argType != tt.want.argType {
+				t.Errorf("NewHandler().argType = %v, want %v", got.argType, tt.want.argType)
+			}
+			if got.path != tt.want.path {
+				t.Errorf("NewHandler().path = %v, want %v", got.path, tt.want.path)
 			}
 		})
 	}
