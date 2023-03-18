@@ -116,24 +116,11 @@ func TestWorkerRun(t *testing.T) {
 
 func TestWorkerSignal(t *testing.T) {
 	w := NewWorker("test", NewQueue("test", NewRedisPool(redisAddr), DequeueTimeout(2)))
-	w.RegisterHandlers(redisCall)
+	w.RegisterHandlers(syscall.Kill)
 
 	q := NewQueue("test", NewRedisPool(redisAddr))
-	conn := q.redis.Get()
-	defer conn.Close()
-	defer q.Clear()
-
-	key := "test" + w.id
-	defer conn.Do("DEL", key)
-	task := NewTaskOfFunc(0, redisCall, redisArgs{Address: redisAddr, Cmd: "RPUSH", Args: []interface{}{key, 1}})
+	task := NewTaskOfFunc(0, syscall.Kill, []interface{}{os.Getpid(), syscall.SIGHUP})
 	q.Enqueue(task)
-
-	pid := os.Getpid()
-
-	go func() {
-		conn.Do("BLPOP", key, 0)
-		syscall.Kill(pid, syscall.SIGHUP)
-	}()
 
 	w.Run()
 }
