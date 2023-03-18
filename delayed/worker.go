@@ -16,7 +16,11 @@ const (
 	WorkerStatusStopping
 )
 
-const defaultKeepAliveDuration = 15 * time.Second
+const (
+	defaultKeepAliveDuration = 15 * time.Second
+	defaultSleepTime         = time.Second
+	maxSleepTime             = time.Minute
+)
 
 type WorkerOption func(*Worker)
 
@@ -82,11 +86,18 @@ func (w *Worker) Run() {
 func (w *Worker) run() {
 	defer Recover() // try recover() out of execute() to reduce its overhead
 
+	sleepTime := defaultSleepTime
 	for atomic.LoadUint32(&w.status) == WorkerStatusRunning {
 		task, err := w.queue.Dequeue()
 		if err != nil {
 			log.Errorf("dequeue task error: %v", err)
-			time.Sleep(time.Second) // TODO: increase sleep time
+			time.Sleep(sleepTime)
+			sleepTime *= 2
+			if sleepTime > maxSleepTime {
+				sleepTime = maxSleepTime
+			}
+		} else {
+			sleepTime = defaultSleepTime
 		}
 		if task == nil {
 			continue
