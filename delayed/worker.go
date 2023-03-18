@@ -34,7 +34,7 @@ type Worker struct {
 	id                string
 	queue             *Queue
 	handlers          map[string]*Handler
-	status            atomic.Uint32
+	status            uint32
 	keepAliveDuration uint16 // seconds
 	sigChan           chan os.Signal
 }
@@ -66,15 +66,15 @@ func (w *Worker) RegisterHandlers(funcs ...interface{}) {
 }
 
 func (w *Worker) Run() {
-	w.status.Store(WorkerStatusRunning)
-	defer func() { w.status.Store(WorkerStatusStopped) }()
+	atomic.StoreUint32(&w.status, WorkerStatusRunning)
+	defer func() { atomic.StoreUint32(&w.status, WorkerStatusStopped) }()
 
 	w.KeepAlive()
 
 	w.registerSignals()
 	defer w.unregisterSignals()
 
-	for w.status.Load() == WorkerStatusRunning {
+	for atomic.LoadUint32(&w.status) == WorkerStatusRunning {
 		w.run()
 	}
 }
@@ -82,7 +82,7 @@ func (w *Worker) Run() {
 func (w *Worker) run() {
 	defer Recover() // try recover() out of execute() to reduce its overhead
 
-	for w.status.Load() == WorkerStatusRunning {
+	for atomic.LoadUint32(&w.status) == WorkerStatusRunning {
 		task, err := w.queue.Dequeue()
 		if err != nil {
 			log.Errorf("dequeue task error: %v", err)
@@ -97,8 +97,8 @@ func (w *Worker) run() {
 }
 
 func (w *Worker) Stop() {
-	if w.status.Load() == WorkerStatusRunning {
-		w.status.Store(WorkerStatusStopping)
+	if atomic.LoadUint32(&w.status) == WorkerStatusRunning {
+		atomic.StoreUint32(&w.status, WorkerStatusStopping)
 	}
 }
 
@@ -127,7 +127,7 @@ func (w *Worker) KeepAlive() {
 		ticker := time.NewTicker(time.Second * time.Duration(w.keepAliveDuration))
 		defer ticker.Stop()
 
-		for w.status.Load() != WorkerStatusStopped { // should keep alive even stopping
+		for atomic.LoadUint32(&w.status) != WorkerStatusStopped { // should keep alive even stopping
 			w.keepAlive()
 
 			select {

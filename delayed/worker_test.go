@@ -75,35 +75,35 @@ func TestWorkerRun(t *testing.T) {
 		t.FailNow()
 	}
 
-	failed := atomic.Bool{}
+	var failed uint32
 
 	go func() {
 		defer w.Stop()
 		reply, err := redis.Values(conn.Do("BLPOP", key, 0))
 		if err != nil {
-			failed.Store(true)
+			atomic.StoreUint32(&failed, 1)
 			return
 		}
 
 		if len(reply) != 2 {
-			failed.Store(true)
+			atomic.StoreUint32(&failed, 1)
 			return
 		}
 
 		popped, ok := reply[1].([]uint8)
 		if !ok || len(popped) != 1 {
-			failed.Store(true)
+			atomic.StoreUint32(&failed, 1)
 			return
 		}
 
 		if popped[0] != '1' {
-			failed.Store(true)
+			atomic.StoreUint32(&failed, 1)
 		}
 	}()
 
 	w.Run()
 
-	if failed.Load() {
+	if atomic.LoadUint32(&failed) == 1 {
 		t.FailNow()
 	}
 
