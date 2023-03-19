@@ -9,6 +9,12 @@ import (
 	"github.com/shamaton/msgpack/v2"
 )
 
+type Task interface {
+	Serialize() ([]byte, error)
+	getID() *uint64
+	getData() []byte
+}
+
 type RawGoTask struct {
 	ID       uint64
 	FuncPath string
@@ -16,24 +22,27 @@ type RawGoTask struct {
 }
 
 type GoTask struct {
-	raw  RawGoTask
+	raw  RawGoTask // make it unexported but can be serialized by MessagePack
 	arg  interface{}
 	data []byte // serialized data
 }
 
-var goTaskExportFieldsCount = reflect.TypeOf(RawGoTask{}).NumField()
-
-func NewTask(id uint64, funcPath string, arg interface{}) *GoTask {
+func NewGoTask(funcPath string, arg ...interface{}) *GoTask {
+	var a interface{}
+	if len(arg) == 1 {
+		a = arg[0]
+	} else {
+		a = arg
+	}
 	return &GoTask{
 		raw: RawGoTask{
-			ID:       id,
 			FuncPath: funcPath,
 		},
-		arg: arg,
+		arg: a,
 	}
 }
 
-func NewTaskOfFunc(id uint64, f, arg interface{}) *GoTask {
+func NewGoTaskOfFunc(f interface{}, arg ...interface{}) *GoTask {
 	fn := reflect.ValueOf(f)
 	if fn.Kind() != reflect.Func {
 		return nil
@@ -44,12 +53,17 @@ func NewTaskOfFunc(id uint64, f, arg interface{}) *GoTask {
 		return nil
 	}
 
+	var a interface{}
+	if len(arg) == 1 {
+		a = arg[0]
+	} else {
+		a = arg
+	}
 	return &GoTask{
 		raw: RawGoTask{
-			ID:       id,
 			FuncPath: funcPath,
 		},
-		arg: arg,
+		arg: a,
 	}
 }
 
@@ -58,7 +72,7 @@ func (t *GoTask) Equal(task *GoTask) bool {
 	return t.raw.ID == task.raw.ID && t.raw.FuncPath == task.raw.FuncPath && (bytes.Equal(t.raw.Payload, task.raw.Payload) || reflect.DeepEqual(t.arg, task.arg))
 }
 
-func (t *GoTask) Serialize() (err error) {
+func (t *GoTask) Serialize() (data []byte, err error) {
 	if t.arg != nil {
 		t.raw.Payload, err = msgpack.Marshal(t.arg)
 		if err != nil {
@@ -72,7 +86,7 @@ func (t *GoTask) Serialize() (err error) {
 		log.Errorf("serialize task.data error: %v", err)
 		return
 	}
-	return
+	return t.data, nil
 }
 
 func DeserializeGoTask(data []byte) (task *GoTask, err error) {
@@ -85,4 +99,51 @@ func DeserializeGoTask(data []byte) (task *GoTask, err error) {
 		return
 	}
 	return t, nil
+}
+
+func (t *GoTask) getID() *uint64 {
+	return &t.raw.ID
+}
+
+func (t *GoTask) getData() []byte {
+	return t.data
+}
+
+type RawPyTask struct {
+	ID       uint64
+	FuncPath string
+	Args     interface{} // must be slice, array or nil
+	KwArgs   interface{} // must be map, struct or nil
+}
+
+type PyTask struct {
+	raw  RawPyTask // make it unexported but can be serialized by MessagePack
+	data []byte    // serialized data
+}
+
+func NewPyTask(funcPath string, args, kwArgs interface{}) *PyTask {
+	return &PyTask{
+		raw: RawPyTask{
+			FuncPath: funcPath,
+			Args:     args,
+			KwArgs:   kwArgs,
+		},
+	}
+}
+
+func (t *PyTask) Serialize() (data []byte, err error) {
+	t.data, err = msgpack.MarshalAsArray(&t.raw)
+	if err != nil {
+		log.Errorf("serialize task.data error: %v", err)
+		return
+	}
+	return t.data, nil
+}
+
+func (t *PyTask) getID() *uint64 {
+	return &t.raw.ID
+}
+
+func (t *PyTask) getData() []byte {
+	return t.data
 }

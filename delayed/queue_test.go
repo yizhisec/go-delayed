@@ -3,6 +3,7 @@ package delayed
 import (
 	"bytes"
 	"testing"
+	"time"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -18,11 +19,11 @@ func TestQueueEnqueue(t *testing.T) {
 	q := NewQueue("test", NewRedisPool(redisAddr))
 	defer q.Clear()
 
-	err := q.Enqueue(NewTaskOfFunc(1, f1, nil))
+	err := q.Enqueue(NewGoTaskOfFunc(f1, nil))
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = q.Enqueue(NewTaskOfFunc(1, f1, tArg))
+	err = q.Enqueue(NewGoTaskOfFunc(f1, tArg))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +41,8 @@ func TestQueueLen(t *testing.T) {
 	}
 
 	for i, tt := range taskTestCases {
-		task := NewTask(tt.id, tt.funcPath, tt.arg)
+		task := NewGoTask(tt.funcPath, tt.arg)
+		*task.getID() = tt.id
 		err := q.Enqueue(task)
 		if err != nil {
 			t.Fatal(err)
@@ -65,7 +67,7 @@ func TestQueueLen(t *testing.T) {
 }
 
 func TestQueueDequeue(t *testing.T) {
-	q := NewQueue("test", NewRedisPool(redisAddr), DequeueTimeout(2))
+	q := NewQueue("test", NewRedisPool(redisAddr), DequeueTimeout(time.Millisecond*2))
 	defer q.Clear()
 
 	task, err := q.Dequeue()
@@ -78,7 +80,8 @@ func TestQueueDequeue(t *testing.T) {
 
 	for _, tt := range taskTestCases {
 		t.Run(tt.name, func(t *testing.T) {
-			task1 := NewTask(tt.id, tt.funcPath, tt.arg)
+			task1 := NewGoTask(tt.funcPath, tt.arg)
+			*task1.getID() = tt.id
 			err := q.Enqueue(task1)
 			if err != nil {
 				t.Fatal(err)
@@ -102,7 +105,8 @@ func TestQueueDequeue(t *testing.T) {
 	q.Clear()
 	tasks := []*GoTask{}
 	for _, tt := range taskTestCases {
-		task := NewTask(tt.id, tt.funcPath, tt.arg)
+		task := NewGoTask(tt.funcPath, tt.arg)
+		*task.getID() = tt.id
 		err := q.Enqueue(task)
 		if err != nil {
 			t.Fatal(err)
@@ -130,7 +134,8 @@ func TestQueueRelease(t *testing.T) {
 	defer conn.Close()
 
 	for _, tt := range taskTestCases {
-		task := NewTask(tt.id, tt.funcPath, tt.arg)
+		task := NewGoTask(tt.funcPath, tt.arg)
+		*task.getID() = tt.id
 		err := q.Enqueue(task)
 		if err != nil {
 			t.Fatal(err)
@@ -217,7 +222,8 @@ func TestQueueRequeueLost(t *testing.T) {
 	defer q.Clear()
 
 	for _, tt := range taskTestCases {
-		task := NewTask(tt.id, tt.funcPath, tt.arg)
+		task := NewGoTask(tt.funcPath, tt.arg)
+		*task.getID() = tt.id
 		q.Enqueue(task)
 		q.Dequeue()
 	}
@@ -268,7 +274,8 @@ func TestQueueRequeueLost(t *testing.T) {
 
 	q.keepAlive()
 	tt := taskTestCases[0]
-	task = NewTask(tt.id, tt.funcPath, tt.arg)
+	task = NewGoTask(tt.funcPath, tt.arg)
+	*task.getID() = tt.id
 	q.Enqueue(task)
 	q.Dequeue()
 	assertLostLen(0)

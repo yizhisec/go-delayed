@@ -11,19 +11,23 @@ import (
 )
 
 const (
-	WorkerStatusStopped uint32 = iota
-	WorkerStatusRunning
-	WorkerStatusStopping
+	StatusStopped uint32 = iota
+	StatusRunning
+	StatusStopping
 )
 
-const defaultKeepAliveDuration uint16 = 15
+const (
+	defaultKeepAliveDuration = 15 * time.Second
+	defaultSleepTime         = time.Second
+	maxSleepTime             = time.Minute
+)
 
 type WorkerOption func(*Worker)
 
-func KeepAliveDuration(s uint16) WorkerOption {
+func KeepAliveDuration(d time.Duration) WorkerOption {
 	return func(w *Worker) {
-		if s > 0 {
-			w.keepAliveDuration = s
+		if d > 0 {
+			w.keepAliveDuration = d
 		} else {
 			w.keepAliveDuration = defaultKeepAliveDuration
 		}
@@ -34,12 +38,12 @@ type Worker struct {
 	id                string
 	queue             *Queue
 	handlers          map[string]*Handler
-	status            atomic.Uint32
-	keepAliveDuration uint16 // seconds
+	status            uint32
+	keepAliveDuration time.Duration
 	sigChan           chan os.Signal
 }
 
-func NewWorker(name string, queue *Queue, options ...WorkerOption) *Worker {
+func NewWorker(queue *Queue, options ...WorkerOption) *Worker {
 	id := RandHexString(16)
 	queue.workerID = id
 	worker := &Worker{
@@ -66,15 +70,15 @@ func (w *Worker) RegisterHandlers(funcs ...interface{}) {
 }
 
 func (w *Worker) Run() {
-	w.status.Store(WorkerStatusRunning)
-	defer func() { w.status.Store(WorkerStatusStopped) }()
+	atomic.StoreUint32(&w.status, StatusRunning)
+	defer func() { atomic.StoreUint32(&w.status, StatusStopped) }()
 
 	w.KeepAlive()
 
 	w.registerSignals()
 	defer w.unregisterSignals()
 
-	for w.status.Load() == WorkerStatusRunning {
+	for atomic.LoadUint32(&w.status) == StatusRunning {
 		w.run()
 	}
 }
@@ -82,11 +86,18 @@ func (w *Worker) Run() {
 func (w *Worker) run() {
 	defer Recover() // try recover() out of execute() to reduce its overhead
 
-	for w.status.Load() == WorkerStatusRunning {
+	sleepTime := defaultSleepTime
+	for atomic.LoadUint32(&w.status) == StatusRunning {
 		task, err := w.queue.Dequeue()
 		if err != nil {
 			log.Errorf("dequeue task error: %v", err)
-			time.Sleep(time.Second) // TODO: increase sleep time
+			time.Sleep(sleepTime)
+			sleepTime *= 2
+			if sleepTime > maxSleepTime {
+				sleepTime = maxSleepTime
+			}
+		} else {
+			sleepTime = defaultSleepTime
 		}
 		if task == nil {
 			continue
@@ -97,8 +108,8 @@ func (w *Worker) run() {
 }
 
 func (w *Worker) Stop() {
-	if w.status.Load() == WorkerStatusRunning {
-		w.status.Store(WorkerStatusStopping)
+	if atomic.LoadUint32(&w.status) == StatusRunning {
+		atomic.StoreUint32(&w.status, StatusStopping)
 	}
 }
 
@@ -124,10 +135,10 @@ func (w *Worker) KeepAlive() {
 	w.keepAlive()
 
 	go func() {
-		ticker := time.NewTicker(time.Second * time.Duration(w.keepAliveDuration))
+		ticker := time.NewTicker(w.keepAliveDuration)
 		defer ticker.Stop()
 
-		for w.status.Load() != WorkerStatusStopped { // should keep alive even stopping
+		for atomic.LoadUint32(&w.status) != StatusStopped { // should keep alive even stopping
 			w.keepAlive()
 
 			select {

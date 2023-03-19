@@ -1,6 +1,9 @@
 package delayed
 
 import (
+	"errors"
+	"time"
+
 	"github.com/gomodule/redigo/redis"
 	"github.com/keakon/golog/log"
 )
@@ -10,8 +13,8 @@ const (
 	notiKeySuffix       = "_noti"
 	processingKeySuffix = "_processing"
 
-	defaultDequeueTimeout   uint32 = 1000
-	defaultKeepAliveTimeout uint16 = 60
+	defaultDequeueTimeout   float32 = 1
+	defaultKeepAliveTimeout float32 = 60
 )
 
 const (
@@ -48,14 +51,16 @@ end
 return count`
 )
 
+var InvalidRedisReplyError = errors.New("Invalid redis reply")
+
 type Queue struct {
 	workerID         string
 	name             string
 	idKey            string
 	notiKey          string
 	processingKey    string
-	dequeueTimeout   uint32 // ms, must be larger than 1, redis BLPOP treats timeout equal or less than 0.001 second as 0 (forever)
-	KeepAliveTimeout uint16
+	dequeueTimeout   float32 // seconds
+	keepAliveTimeout float32 // seconds
 
 	redis             *redis.Pool
 	dequeueScript     *redis.Script
@@ -67,22 +72,22 @@ type Queue struct {
 
 type QueueOption func(*Queue)
 
-func DequeueTimeout(ms uint32) QueueOption {
+func DequeueTimeout(d time.Duration) QueueOption { // must be larger than 1 ms, redis BLPOP treats timeout equal or less than 0.001 second as 0 (forever)
 	return func(q *Queue) {
-		if ms > 1 {
-			q.dequeueTimeout = ms
+		if d > time.Millisecond {
+			q.dequeueTimeout = float32(d/time.Millisecond) * 0.001
 		} else {
 			q.dequeueTimeout = defaultDequeueTimeout
 		}
 	}
 }
 
-func KeepAliveTimeout(s uint16) QueueOption {
+func KeepAliveTimeout(d time.Duration) QueueOption {
 	return func(q *Queue) {
-		if s > 1 {
-			q.KeepAliveTimeout = s
-		} else if s == 0 {
-			q.KeepAliveTimeout = defaultKeepAliveTimeout
+		if d == 0 {
+			q.keepAliveTimeout = defaultKeepAliveTimeout
+		} else {
+			q.keepAliveTimeout = float32(d/time.Millisecond) * 0.001
 		}
 	}
 }
@@ -94,7 +99,7 @@ func NewQueue(name string, redisPool *redis.Pool, options ...QueueOption) *Queue
 		notiKey:           name + notiKeySuffix,
 		processingKey:     name + processingKeySuffix,
 		dequeueTimeout:    defaultDequeueTimeout,
-		KeepAliveTimeout:  defaultKeepAliveTimeout,
+		keepAliveTimeout:  defaultKeepAliveTimeout,
 		redis:             redisPool,
 		dequeueScript:     redis.NewScript(2, dequeueScript),
 		requeueLostScript: redis.NewScript(3, requeueLostScript),
@@ -111,7 +116,7 @@ func (q *Queue) keepAlive() error {
 	conn := q.redis.Get()
 	defer conn.Close()
 
-	_, err := conn.Do("SETEX", q.workerID, q.KeepAliveTimeout, 1)
+	_, err := conn.Do("SETEX", q.workerID, q.keepAliveTimeout, 1)
 	return err
 }
 
@@ -138,28 +143,29 @@ func (q *Queue) Len() (count int, err error) {
 	return redis.Int(conn.Do("LLEN", q.name))
 }
 
-func (q *Queue) Enqueue(task *GoTask) (err error) {
+func (q *Queue) Enqueue(task Task) (err error) {
 	conn := q.redis.Get()
 	defer conn.Close()
 
-	if task.raw.ID == 0 {
-		id, err := redis.Int64(conn.Do("INCR", q.idKey))
+	if taskID := task.getID(); *taskID == 0 {
+		id, err := redis.Uint64(conn.Do("INCR", q.idKey))
 		if err != nil {
 			log.Errorf("enqueue task failed: %v", err)
 			return err
 		}
-		task.raw.ID = uint64(id)
+		*taskID = id
 	}
 
-	if len(task.data) == 0 {
-		err = task.Serialize()
+	data := task.getData()
+	if len(data) == 0 {
+		data, err = task.Serialize()
 		if err != nil {
 			log.Errorf("serialize task failed: %v", err)
 			return
 		}
 	}
 
-	err = conn.Send("RPUSH", q.name, task.data)
+	err = conn.Send("RPUSH", q.name, data)
 	if err != nil {
 		return
 	}
@@ -172,7 +178,7 @@ func (q *Queue) Dequeue() (task *GoTask, err error) {
 	conn := q.redis.Get()
 	defer conn.Close()
 
-	reply, err := redis.Values(conn.Do("BLPOP", q.notiKey, float32(q.dequeueTimeout)*0.001)) // convert milliseconds to seconds
+	reply, err := redis.Values(conn.Do("BLPOP", q.notiKey, q.dequeueTimeout))
 	if err != nil {
 		if err == redis.ErrNil {
 			err = nil
@@ -184,12 +190,12 @@ func (q *Queue) Dequeue() (task *GoTask, err error) {
 		return nil, InvalidRedisReplyError
 	}
 
-	popped, ok := reply[1].([]uint8)
+	popped, ok := reply[1].([]uint8) // reply[0] is the popped key (q.notiKey)
 	if !ok || len(popped) != 1 {
 		return nil, InvalidRedisReplyError
 	}
 
-	if popped[0] == '1' {
+	if popped[0] == '1' { // redis encodes 1 into '1'
 		data, err := redis.Bytes(q.dequeueScript.Do(conn, q.name, q.processingKey, q.workerID))
 		if err != nil {
 			return nil, err

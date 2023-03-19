@@ -37,18 +37,32 @@ var (
 			funcPath: "test",
 			arg:      1,
 		},
+		{
+			name:     "int args",
+			id:       5,
+			funcPath: "test",
+			arg:      []int{1, 2},
+		},
+		{
+			name:     "struct args",
+			id:       6,
+			funcPath: "test",
+			arg:      []testArg{tArg, tArg},
+		},
 	}
 )
 
 func TestGoTaskSerialize(t *testing.T) {
-	task1 := NewTask(1, "test", nil)
-	err := task1.Serialize()
+	task1 := NewGoTask("test", nil)
+	*task1.getID() = 1
+	_, err := task1.Serialize()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	task2 := NewTask(2, "test", tArg)
-	err = task2.Serialize()
+	task2 := NewGoTask("test", tArg)
+	*task2.getID() = 2
+	_, err = task2.Serialize()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,8 +71,9 @@ func TestGoTaskSerialize(t *testing.T) {
 		t.FailNow()
 	}
 
-	task3 := NewTask(3, "test", &tArg)
-	err = task3.Serialize()
+	task3 := NewGoTask("test", &tArg)
+	*task3.getID() = 3
+	_, err = task3.Serialize()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,10 +86,12 @@ func TestGoTaskSerialize(t *testing.T) {
 func TestDeserializeGoTask(t *testing.T) {
 	for _, tt := range taskTestCases {
 		t.Run(tt.name, func(t *testing.T) {
-			task1 := NewTask(tt.id, tt.funcPath, tt.arg)
-			task2 := NewTask(tt.id, tt.funcPath, tt.arg)
+			task1 := NewGoTask(tt.funcPath, tt.arg)
+			*task1.getID() = tt.id
+			task2 := NewGoTask(tt.funcPath, tt.arg)
+			*task2.getID() = tt.id
 
-			err := task1.Serialize()
+			data, err := task1.Serialize()
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -83,13 +100,69 @@ func TestDeserializeGoTask(t *testing.T) {
 				t.FailNow()
 			}
 
-			task3, err := DeserializeGoTask(task1.data)
+			task3, err := DeserializeGoTask(data)
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			if !task1.Equal(task3) {
 				t.FailNow()
+			}
+		})
+	}
+}
+
+func TestPyTaskSerialize(t *testing.T) {
+	tests := []struct {
+		name     string
+		funcPath string
+		args     interface{}
+		kwArgs   interface{}
+	}{
+		{
+			name:     "int arg",
+			funcPath: "test",
+			args:     []int{1},
+			kwArgs:   nil,
+		},
+		{
+			name:     "no arg",
+			funcPath: "test",
+			args:     nil,
+			kwArgs:   nil,
+		},
+		{
+			name:     "int + string args",
+			funcPath: "test",
+			args:     []interface{}{1, "2"},
+			kwArgs:   nil,
+		},
+		{
+			name:     "map kwargs",
+			funcPath: "test",
+			args:     nil,
+			kwArgs:   map[string]string{"foo": "bar"},
+		},
+		{
+			name:     "struct kwargs",
+			funcPath: "test",
+			args:     nil,
+			kwArgs:   tArg,
+		},
+		{
+			name:     "args + kwargs",
+			funcPath: "test",
+			args:     []interface{}{1, "2"},
+			kwArgs:   tArg,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if task := NewPyTask(tt.funcPath, tt.args, tt.kwArgs); task == nil {
+				t.Errorf("NewPyTask() is nil")
+			} else if _, err := task.Serialize(); err != nil {
+				t.Errorf("task.Serialize() failed: %v", err)
 			}
 		})
 	}

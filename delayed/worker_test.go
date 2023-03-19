@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/gomodule/redigo/redis"
 	"github.com/keakon/golog"
@@ -33,8 +34,10 @@ func redisCall2(arg *redisArgs) {
 	redisCall(arg)
 }
 
+var redisCall3 = redisCall
+
 func TestWorkerRegisterHandlers(t *testing.T) {
-	w := NewWorker("test", NewQueue("test", NewRedisPool(redisAddr)))
+	w := NewWorker(NewQueue("test", NewRedisPool(redisAddr)))
 	w.RegisterHandlers(f1, f2, f3)
 	if len(w.handlers) != 3 {
 		t.FailNow()
@@ -48,7 +51,7 @@ func TestWorkerRegisterHandlers(t *testing.T) {
 func TestWorkerRun(t *testing.T) {
 	initLogger(golog.DebugLevel)
 
-	w := NewWorker("test", NewQueue("test", NewRedisPool(redisAddr), DequeueTimeout(2)))
+	w := NewWorker(NewQueue("test", NewRedisPool(redisAddr), DequeueTimeout(time.Millisecond*2)), KeepAliveDuration(time.Second))
 	w.RegisterHandlers(panicFunc, redisCall)
 
 	q := NewQueue("test", NewRedisPool(redisAddr))
@@ -58,11 +61,11 @@ func TestWorkerRun(t *testing.T) {
 
 	key := "test" + w.id
 	defer conn.Do("DEL", key)
-	task := NewTaskOfFunc(0, panicFunc, "test")
+	task := NewGoTaskOfFunc(panicFunc, "test")
 	q.Enqueue(task)
-	task = NewTaskOfFunc(0, redisCall2, redisArgs{Address: redisAddr, Cmd: "RPUSH", Args: []interface{}{key, 2}})
+	task = NewGoTaskOfFunc(redisCall2, redisArgs{Address: redisAddr, Cmd: "RPUSH", Args: []interface{}{key, 2}}) // skipped because of not registered
 	q.Enqueue(task)
-	task = NewTaskOfFunc(0, redisCall, redisArgs{Address: redisAddr, Cmd: "RPUSH", Args: []interface{}{key, 1}})
+	task = NewGoTaskOfFunc(redisCall3, redisArgs{Address: redisAddr, Cmd: "RPUSH", Args: []interface{}{key, 1}}) // same as call redisCall
 	q.Enqueue(task)
 
 	count, err := q.Len()
@@ -73,35 +76,35 @@ func TestWorkerRun(t *testing.T) {
 		t.FailNow()
 	}
 
-	failed := atomic.Bool{}
+	var failed uint32
 
 	go func() {
 		defer w.Stop()
 		reply, err := redis.Values(conn.Do("BLPOP", key, 0))
 		if err != nil {
-			failed.Store(true)
+			atomic.StoreUint32(&failed, 1)
 			return
 		}
 
 		if len(reply) != 2 {
-			failed.Store(true)
+			atomic.StoreUint32(&failed, 1)
 			return
 		}
 
 		popped, ok := reply[1].([]uint8)
 		if !ok || len(popped) != 1 {
-			failed.Store(true)
+			atomic.StoreUint32(&failed, 1)
 			return
 		}
 
 		if popped[0] != '1' {
-			failed.Store(true)
+			atomic.StoreUint32(&failed, 1)
 		}
 	}()
 
 	w.Run()
 
-	if failed.Load() {
+	if atomic.LoadUint32(&failed) == 1 {
 		t.FailNow()
 	}
 
@@ -115,11 +118,11 @@ func TestWorkerRun(t *testing.T) {
 }
 
 func TestWorkerSignal(t *testing.T) {
-	w := NewWorker("test", NewQueue("test", NewRedisPool(redisAddr), DequeueTimeout(2)))
+	w := NewWorker(NewQueue("test", NewRedisPool(redisAddr), DequeueTimeout(time.Millisecond*2)))
 	w.RegisterHandlers(syscall.Kill)
 
 	q := NewQueue("test", NewRedisPool(redisAddr))
-	task := NewTaskOfFunc(0, syscall.Kill, []interface{}{os.Getpid(), syscall.SIGHUP})
+	task := NewGoTaskOfFunc(syscall.Kill, os.Getpid(), syscall.SIGHUP)
 	q.Enqueue(task)
 
 	w.Run()
@@ -164,17 +167,17 @@ func BenchmarkWorkerExecute(b *testing.B) {
 		{
 			name: "struct arg",
 			fn:   structFunc,
-			arg:  testArg{},
+			arg:  tArg,
 		},
 		{
 			name: "*struct arg",
 			fn:   structPFunc,
-			arg:  &testArg{},
+			arg:  &tArg,
 		},
 		{
 			name: "struct 2 args",
 			fn:   struct2Func,
-			arg:  []testArg{{}, {}},
+			arg:  []testArg{{}, tArg},
 		},
 	}
 
@@ -183,8 +186,8 @@ func BenchmarkWorkerExecute(b *testing.B) {
 	}
 
 	for _, tt := range tests {
-		task := NewTaskOfFunc(0, tt.fn, nil)
-		err := task.Serialize()
+		task := NewGoTaskOfFunc(tt.fn, nil)
+		_, err := task.Serialize()
 		if err != nil {
 			b.FailNow()
 		}
