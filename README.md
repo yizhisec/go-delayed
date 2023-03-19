@@ -82,3 +82,12 @@ Go-delayed is a simple but robust task queue inspired by [rq](https://python-rq.
 	w.RegisterHandlers(f1, f2, syscall.Kill) // tasks with function not been registered will be ignored
 	w.Run()
     ```
+
+6. Run a task sweeper in a separated process to recovery lost tasks (mainly due to the worker got killed):
+
+    ```Go
+	delayed.NewSweeper(
+		delayed.NewQueue("default", delayed.NewRedisPool(":6379")),
+		delayed.NewQueue("test", delayed.NewRedisPool(":6380")),
+	).Run()
+    ```

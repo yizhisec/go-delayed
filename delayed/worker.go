@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	WorkerStatusStopped uint32 = iota
-	WorkerStatusRunning
-	WorkerStatusStopping
+	StatusStopped uint32 = iota
+	StatusRunning
+	StatusStopping
 )
 
 const (
@@ -70,15 +70,15 @@ func (w *Worker) RegisterHandlers(funcs ...interface{}) {
 }
 
 func (w *Worker) Run() {
-	atomic.StoreUint32(&w.status, WorkerStatusRunning)
-	defer func() { atomic.StoreUint32(&w.status, WorkerStatusStopped) }()
+	atomic.StoreUint32(&w.status, StatusRunning)
+	defer func() { atomic.StoreUint32(&w.status, StatusStopped) }()
 
 	w.KeepAlive()
 
 	w.registerSignals()
 	defer w.unregisterSignals()
 
-	for atomic.LoadUint32(&w.status) == WorkerStatusRunning {
+	for atomic.LoadUint32(&w.status) == StatusRunning {
 		w.run()
 	}
 }
@@ -87,7 +87,7 @@ func (w *Worker) run() {
 	defer Recover() // try recover() out of execute() to reduce its overhead
 
 	sleepTime := defaultSleepTime
-	for atomic.LoadUint32(&w.status) == WorkerStatusRunning {
+	for atomic.LoadUint32(&w.status) == StatusRunning {
 		task, err := w.queue.Dequeue()
 		if err != nil {
 			log.Errorf("dequeue task error: %v", err)
@@ -108,8 +108,8 @@ func (w *Worker) run() {
 }
 
 func (w *Worker) Stop() {
-	if atomic.LoadUint32(&w.status) == WorkerStatusRunning {
-		atomic.StoreUint32(&w.status, WorkerStatusStopping)
+	if atomic.LoadUint32(&w.status) == StatusRunning {
+		atomic.StoreUint32(&w.status, StatusStopping)
 	}
 }
 
@@ -138,7 +138,7 @@ func (w *Worker) KeepAlive() {
 		ticker := time.NewTicker(w.keepAliveDuration)
 		defer ticker.Stop()
 
-		for atomic.LoadUint32(&w.status) != WorkerStatusStopped { // should keep alive even stopping
+		for atomic.LoadUint32(&w.status) != StatusStopped { // should keep alive even stopping
 			w.keepAlive()
 
 			select {
