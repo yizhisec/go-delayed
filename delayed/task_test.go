@@ -42,14 +42,14 @@ var (
 
 func TestGoTaskSerialize(t *testing.T) {
 	task1 := NewGoTask("test", nil)
-	task1.setID(1)
+	*task1.getID() = 1
 	_, err := task1.Serialize()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	task2 := NewGoTask("test", tArg)
-	task2.setID(2)
+	*task2.getID() = 2
 	_, err = task2.Serialize()
 	if err != nil {
 		t.Fatal(err)
@@ -60,7 +60,7 @@ func TestGoTaskSerialize(t *testing.T) {
 	}
 
 	task3 := NewGoTask("test", &tArg)
-	task3.setID(3)
+	*task3.getID() = 3
 	_, err = task3.Serialize()
 	if err != nil {
 		t.Fatal(err)
@@ -75,9 +75,9 @@ func TestDeserializeGoTask(t *testing.T) {
 	for _, tt := range taskTestCases {
 		t.Run(tt.name, func(t *testing.T) {
 			task1 := NewGoTask(tt.funcPath, tt.arg)
-			task1.setID(tt.id)
+			*task1.getID() = tt.id
 			task2 := NewGoTask(tt.funcPath, tt.arg)
-			task2.setID(tt.id)
+			*task2.getID() = tt.id
 
 			data, err := task1.Serialize()
 			if err != nil {

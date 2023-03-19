@@ -11,8 +11,7 @@ import (
 
 type Task interface {
 	Serialize() ([]byte, error)
-	getID() uint64
-	setID(uint64)
+	getID() *uint64
 	getData() []byte
 }
 
@@ -90,13 +89,10 @@ func DeserializeGoTask(data []byte) (task *GoTask, err error) {
 	return t, nil
 }
 
-func (t *GoTask) getID() uint64 {
-	return t.raw.ID
+func (t *GoTask) getID() *uint64 {
+	return &t.raw.ID
 }
 
-func (t *GoTask) setID(id uint64) {
-	t.raw.ID = id
-}
 func (t *GoTask) getData() []byte {
 	return t.data
 }
@@ -132,12 +128,8 @@ func (t *PyTask) Serialize() (data []byte, err error) {
 	return t.data, nil
 }
 
-func (t *PyTask) getID() uint64 {
-	return t.raw.ID
-}
-
-func (t *PyTask) setID(id uint64) {
-	t.raw.ID = id
+func (t *PyTask) getID() *uint64 {
+	return &t.raw.ID
 }
 
 func (t *PyTask) getData() []byte {

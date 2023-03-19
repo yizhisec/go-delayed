@@ -1,0 +1,68 @@
+# go-delayed
+[![GoDoc](https://pkg.go.dev/badge/github.com/yizhisec/go-delayed)](https://pkg.go.dev/github.com/yizhisec/go-delayed)
+[![Build Status](https://github.com/yizhisec/go-delayed/actions/workflows/go.yml/badge.svg)](https://github.com/yizhisec/go-delayed/actions)
+[![Go Report Card](https://goreportcard.com/badge/github.com/yizhisec/go-delayed)](https://goreportcard.com/report/github.com/yizhisec/go-delayed)
+[![codecov](https://codecov.io/gh/yizhisec/go-delayed/branch/main/graph/badge.svg?token=YKJLNCK2P4)](https://codecov.io/gh/yizhisec/go-delayed)
+
+Go-delayed is a simple but robust task queue inspired by [rq](https://python-rq.org/).
+
+## Features
+
+* Robust: all the enqueued tasks will run exactly once, even if the worker got killed at any time.
+* Clean: finished tasks (including failed) take no space of your Redis.
+* Distributed: workers as more as needed can run in the same time without further config.
+* Portable: its Go and Python version can call each other.
+
+## Requirements
+
+1. Go 1.13 or later, tested on Go 1.13 and 1.20.
+2. To gracefully stop the workers, Unix-like systems (with Unix signal) are required, tested on Ubuntu and macOS.
+3. Redis 2.6.0 or later (with Lua scripts).
+
+## Getting started
+
+1. Run a redis server:
+
+    ```bash
+    $ redis-server
+    ```
+
+2. Create a task queue:
+
+    ```Go
+	import "github.com/yizhisec/go-delayed/delayed"
+
+	var queue = delayed.NewQueue("default", delayed.NewRedisPool(":6379")) // "default" is the queue name
+    ```
+
+4. Two ways to enqueue a Go task:
+
+    * Define a task function and enqueue it:
+
+        ```Go
+		type Arg struct {
+			A int
+			B string
+		}
+
+		func f1(a Arg) int {
+			return a.A + len(a.B)
+		}
+
+		func f2(a, b *Arg) int {
+			return a.A + len(a.B) + b.A + len(b.B)
+		}
+
+		var task = delayed.NewGoTaskOfFunc(f1, Arg{A: 1, B: "test"})
+		queue.Enqueue(task)
+		task = delayed.NewGoTaskOfFunc(f2, []interface{}{1, &Arg{A: 1, B: "test"}})
+		queue.Enqueue(task)
+		task = NewGoTaskOfFunc(syscall.Kill, []interface{}{os.Getpid(), syscall.SIGHUP})
+		queue.Enqueue(task)
+        ```
+    * Create a task by func path:
+
+        ```Go
+		task = delayed.NewGoTask("main.f1", Arg{A: 1, B: "test"})
+		queue.Enqueue(task)
+        ```

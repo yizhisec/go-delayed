@@ -42,7 +42,7 @@ func TestQueueLen(t *testing.T) {
 
 	for i, tt := range taskTestCases {
 		task := NewGoTask(tt.funcPath, tt.arg)
-		task.setID(tt.id)
+		*task.getID() = tt.id
 		err := q.Enqueue(task)
 		if err != nil {
 			t.Fatal(err)
@@ -81,7 +81,7 @@ func TestQueueDequeue(t *testing.T) {
 	for _, tt := range taskTestCases {
 		t.Run(tt.name, func(t *testing.T) {
 			task1 := NewGoTask(tt.funcPath, tt.arg)
-			task1.setID(tt.id)
+			*task1.getID() = tt.id
 			err := q.Enqueue(task1)
 			if err != nil {
 				t.Fatal(err)
@@ -106,7 +106,7 @@ func TestQueueDequeue(t *testing.T) {
 	tasks := []*GoTask{}
 	for _, tt := range taskTestCases {
 		task := NewGoTask(tt.funcPath, tt.arg)
-		task.setID(tt.id)
+		*task.getID() = tt.id
 		err := q.Enqueue(task)
 		if err != nil {
 			t.Fatal(err)
@@ -135,7 +135,7 @@ func TestQueueRelease(t *testing.T) {
 
 	for _, tt := range taskTestCases {
 		task := NewGoTask(tt.funcPath, tt.arg)
-		task.setID(tt.id)
+		*task.getID() = tt.id
 		err := q.Enqueue(task)
 		if err != nil {
 			t.Fatal(err)
@@ -223,7 +223,7 @@ func TestQueueRequeueLost(t *testing.T) {
 
 	for _, tt := range taskTestCases {
 		task := NewGoTask(tt.funcPath, tt.arg)
-		task.setID(tt.id)
+		*task.getID() = tt.id
 		q.Enqueue(task)
 		q.Dequeue()
 	}
@@ -275,7 +275,7 @@ func TestQueueRequeueLost(t *testing.T) {
 	q.keepAlive()
 	tt := taskTestCases[0]
 	task = NewGoTask(tt.funcPath, tt.arg)
-	task.setID(tt.id)
+	*task.getID() = tt.id
 	q.Enqueue(task)
 	q.Dequeue()
 	assertLostLen(0)

@@ -147,13 +147,13 @@ func (q *Queue) Enqueue(task Task) (err error) {
 	conn := q.redis.Get()
 	defer conn.Close()
 
-	if task.getID() == 0 {
+	if taskID := task.getID(); *taskID == 0 {
 		id, err := redis.Uint64(conn.Do("INCR", q.idKey))
 		if err != nil {
 			log.Errorf("enqueue task failed: %v", err)
 			return err
 		}
-		task.setID(id)
+		*taskID = id
 	}
 
 	data := task.getData()
