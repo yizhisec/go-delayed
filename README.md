@@ -35,34 +35,50 @@ Go-delayed is a simple but robust task queue inspired by [rq](https://python-rq.
 	var queue = delayed.NewQueue("default", delayed.NewRedisPool(":6379")) // "default" is the queue name
     ```
 
-4. Two ways to enqueue a Go task:
+3. Enqueue tasks:
+	* Two ways to enqueue Go tasks:
+		* Define task functions:
 
-    * Define a task function and enqueue it:
+			```Go
+			type Arg struct {
+				A int
+				B string
+			}
 
-        ```Go
-		type Arg struct {
-			A int
-			B string
-		}
+			func f1(a Arg) int {
+				return a.A + len(a.B)
+			}
 
-		func f1(a Arg) int {
-			return a.A + len(a.B)
-		}
+			func f2(a, b *Arg) int {
+				return a.A + len(a.B) + b.A + len(b.B)
+			}
 
-		func f2(a, b *Arg) int {
-			return a.A + len(a.B) + b.A + len(b.B)
-		}
+			var task = delayed.NewGoTaskOfFunc(f1, Arg{A: 1, B: "test"})
+			queue.Enqueue(task)
+			task = delayed.NewGoTaskOfFunc(f2, []interface{}{1, &Arg{A: 1, B: "test"}})
+			queue.Enqueue(task)
+			task = delayed.NewGoTaskOfFunc(f2, 1, &Arg{A: 1, B: "test"}) // same as the above task
+			queue.Enqueue(task)
+			task = NewGoTaskOfFunc(syscall.Kill, os.Getpid(), syscall.SIGHUP)
+			queue.Enqueue(task)
+			```
+		* Create a task by func path:
 
-		var task = delayed.NewGoTaskOfFunc(f1, Arg{A: 1, B: "test"})
+			```Go
+			task = delayed.NewGoTask("main.f1", Arg{A: 1, B: "test"})
+			queue.Enqueue(task)
+			```
+	* Enqueue Python tasks:
+
+		```Go
+		var task = delayed.NewPyTask("test", []interface{}{1, 2}, Arg{A: 1, B: "test"}) // args must be slice, array or nil, kwArgs must be map, struct or nil
 		queue.Enqueue(task)
-		task = delayed.NewGoTaskOfFunc(f2, []interface{}{1, &Arg{A: 1, B: "test"}})
-		queue.Enqueue(task)
-		task = NewGoTaskOfFunc(syscall.Kill, []interface{}{os.Getpid(), syscall.SIGHUP})
-		queue.Enqueue(task)
-        ```
-    * Create a task by func path:
+		```
 
-        ```Go
-		task = delayed.NewGoTask("main.f1", Arg{A: 1, B: "test"})
-		queue.Enqueue(task)
-        ```
+5. Run a task worker (or more) in a separated process:
+
+    ```Go
+	w := delayed.NewWorker(delayed.NewQueue("test", delayed.NewRedisPool(":6379")))
+	w.RegisterHandlers(f1, f2, syscall.Kill) // tasks with function not been registered will be ignored
+	w.Run()
+    ```

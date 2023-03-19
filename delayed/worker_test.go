@@ -37,7 +37,7 @@ func redisCall2(arg *redisArgs) {
 var redisCall3 = redisCall
 
 func TestWorkerRegisterHandlers(t *testing.T) {
-	w := NewWorker("test", NewQueue("test", NewRedisPool(redisAddr)))
+	w := NewWorker(NewQueue("test", NewRedisPool(redisAddr)))
 	w.RegisterHandlers(f1, f2, f3)
 	if len(w.handlers) != 3 {
 		t.FailNow()
@@ -51,7 +51,7 @@ func TestWorkerRegisterHandlers(t *testing.T) {
 func TestWorkerRun(t *testing.T) {
 	initLogger(golog.DebugLevel)
 
-	w := NewWorker("test", NewQueue("test", NewRedisPool(redisAddr), DequeueTimeout(time.Millisecond*2)), KeepAliveDuration(time.Second))
+	w := NewWorker(NewQueue("test", NewRedisPool(redisAddr), DequeueTimeout(time.Millisecond*2)), KeepAliveDuration(time.Second))
 	w.RegisterHandlers(panicFunc, redisCall)
 
 	q := NewQueue("test", NewRedisPool(redisAddr))
@@ -118,11 +118,11 @@ func TestWorkerRun(t *testing.T) {
 }
 
 func TestWorkerSignal(t *testing.T) {
-	w := NewWorker("test", NewQueue("test", NewRedisPool(redisAddr), DequeueTimeout(time.Millisecond*2)))
+	w := NewWorker(NewQueue("test", NewRedisPool(redisAddr), DequeueTimeout(time.Millisecond*2)))
 	w.RegisterHandlers(syscall.Kill)
 
 	q := NewQueue("test", NewRedisPool(redisAddr))
-	task := NewGoTaskOfFunc(syscall.Kill, []interface{}{os.Getpid(), syscall.SIGHUP})
+	task := NewGoTaskOfFunc(syscall.Kill, os.Getpid(), syscall.SIGHUP)
 	q.Enqueue(task)
 
 	w.Run()

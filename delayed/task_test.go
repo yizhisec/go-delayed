@@ -37,6 +37,18 @@ var (
 			funcPath: "test",
 			arg:      1,
 		},
+		{
+			name:     "int args",
+			id:       5,
+			funcPath: "test",
+			arg:      []int{1, 2},
+		},
+		{
+			name:     "struct args",
+			id:       6,
+			funcPath: "test",
+			arg:      []testArg{tArg, tArg},
+		},
 	}
 )
 

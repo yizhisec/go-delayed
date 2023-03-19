@@ -43,7 +43,7 @@ type Worker struct {
 	sigChan           chan os.Signal
 }
 
-func NewWorker(name string, queue *Queue, options ...WorkerOption) *Worker {
+func NewWorker(queue *Queue, options ...WorkerOption) *Worker {
 	id := RandHexString(16)
 	queue.workerID = id
 	worker := &Worker{

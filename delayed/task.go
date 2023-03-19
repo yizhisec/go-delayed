@@ -27,16 +27,22 @@ type GoTask struct {
 	data []byte // serialized data
 }
 
-func NewGoTask(funcPath string, arg interface{}) *GoTask {
+func NewGoTask(funcPath string, arg ...interface{}) *GoTask {
+	var a interface{}
+	if len(arg) == 1 {
+		a = arg[0]
+	} else {
+		a = arg
+	}
 	return &GoTask{
 		raw: RawGoTask{
 			FuncPath: funcPath,
 		},
-		arg: arg,
+		arg: a,
 	}
 }
 
-func NewGoTaskOfFunc(f, arg interface{}) *GoTask {
+func NewGoTaskOfFunc(f interface{}, arg ...interface{}) *GoTask {
 	fn := reflect.ValueOf(f)
 	if fn.Kind() != reflect.Func {
 		return nil
@@ -47,11 +53,17 @@ func NewGoTaskOfFunc(f, arg interface{}) *GoTask {
 		return nil
 	}
 
+	var a interface{}
+	if len(arg) == 1 {
+		a = arg[0]
+	} else {
+		a = arg
+	}
 	return &GoTask{
 		raw: RawGoTask{
 			FuncPath: funcPath,
 		},
-		arg: arg,
+		arg: a,
 	}
 }
 
