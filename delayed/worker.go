@@ -92,7 +92,7 @@ func (w *Worker) run() {
 	for atomic.LoadUint32(&w.status) == StatusRunning {
 		task, err := w.queue.Dequeue()
 		if err != nil {
-			log.Errorf("dequeue task error: %v", err)
+			log.Errorf("Failed to dequeue task: %v", err)
 			time.Sleep(sleepTime)
 			sleepTime *= 2
 			if sleepTime > maxSleepTime {
@@ -130,7 +130,6 @@ func (w *Worker) unregisterSignals() {
 func (w *Worker) Execute(t *GoTask) {
 	h, ok := w.handlers[t.raw.FuncPath]
 	if ok {
-		log.Debugf("Executing task %d.", t.raw.ID)
 		h.Call(t.raw.Payload)
 	} else {
 		log.Debugf("Ignore unregistered task %d: %s", t.raw.ID, t.raw.FuncPath)

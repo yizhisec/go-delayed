@@ -40,11 +40,9 @@ func (s *Sweeper) Run() {
 
 func (s *Sweeper) run() {
 	for _, queue := range s.queues {
-		count, err := queue.RequeueLost()
+		_, err := queue.RequeueLost()
 		if err != nil {
 			log.Error(err)
-		} else if count > 0 {
-			log.Debugf("Requeued %d lost tasks from queue %s", count, queue.name)
 		}
 	}
 }

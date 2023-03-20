@@ -4,13 +4,9 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"github.com/keakon/golog"
 )
 
 func TestSweeperRun(t *testing.T) {
-	initLogger(golog.DebugLevel)
-
 	q := NewQueue("test", NewRedisPool(redisAddr))
 	defer q.Clear()
 

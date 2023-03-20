@@ -76,14 +76,14 @@ func (t *GoTask) Serialize() (data []byte, err error) {
 	if t.arg != nil {
 		t.raw.Payload, err = msgpack.Marshal(t.arg)
 		if err != nil {
-			log.Errorf("serialize task.arg error: %v", err)
+			log.Errorf("Failed to serialize task.arg: %v", err)
 			return
 		}
 	}
 
 	t.data, err = msgpack.MarshalAsArray(&t.raw)
 	if err != nil {
-		log.Errorf("serialize task.data error: %v", err)
+		log.Errorf("Failed to serialize task.data: %v", err)
 		return
 	}
 	return t.data, nil
@@ -95,7 +95,7 @@ func DeserializeGoTask(data []byte) (task *GoTask, err error) {
 	}
 	err = msgpack.UnmarshalAsArray(data, &t.raw)
 	if err != nil {
-		log.Errorf("deserialize task error: %v", err)
+		log.Errorf("Failed to deserialize task: %v", err)
 		return
 	}
 	return t, nil
@@ -134,7 +134,7 @@ func NewPyTask(funcPath string, args, kwArgs interface{}) *PyTask {
 func (t *PyTask) Serialize() (data []byte, err error) {
 	t.data, err = msgpack.MarshalAsArray(&t.raw)
 	if err != nil {
-		log.Errorf("serialize task.data error: %v", err)
+		log.Errorf("Failed to serialize task.data: %v", err)
 		return
 	}
 	return t.data, nil

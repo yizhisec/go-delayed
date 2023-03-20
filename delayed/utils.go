@@ -10,7 +10,7 @@ import (
 
 func Recover() {
 	if p := recover(); p != nil {
-		log.Errorf("got a panic: %v", p)
+		log.Errorf("Got a panic: %v", p)
 	}
 }
 

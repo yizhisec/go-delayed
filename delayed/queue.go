@@ -154,7 +154,7 @@ func (q *Queue) Enqueue(task Task) (err error) {
 	if *taskID == 0 {
 		id, err := redis.Uint64(conn.Do("INCR", q.idKey))
 		if err != nil {
-			log.Errorf("enqueue task failed: %v", err)
+			log.Errorf("Failed to generate task id: %v", err)
 			return err
 		}
 		*taskID = id
@@ -166,7 +166,7 @@ func (q *Queue) Enqueue(task Task) (err error) {
 	if len(data) == 0 {
 		data, err = task.Serialize()
 		if err != nil {
-			log.Errorf("serialize task failed: %v", err)
+			log.Errorf("Failed to serialize task %d: %v", *taskID, err)
 			return
 		}
 	}
@@ -225,10 +225,10 @@ func (q *Queue) Release() (err error) {
 	conn := q.redis.Get()
 	defer conn.Close()
 
-	log.Debugf("Releasing task of worker %s.", q.workerID)
+	log.Debugf("Releasing the task of worker %s.", q.workerID)
 	_, err = conn.Do("HDEL", q.processingKey, q.workerID)
 	if err == nil {
-		log.Debugf("Released task of worker %s.", q.workerID)
+		log.Debugf("Released the task of worker %s.", q.workerID)
 	}
 	return
 }

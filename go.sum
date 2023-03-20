@@ -4,6 +4,8 @@ github.com/gomodule/redigo v1.8.9 h1:Sl3u+2BI/kk+VEatbj0scLdrFhjPmbxOc1myhDP41ws
 github.com/gomodule/redigo v1.8.9/go.mod h1:7ArFNvsTjH8GMMzB4uy1snslv2BwmginuMs06a1uzZE=
 github.com/keakon/golog v0.0.0-20221030125838-d449ac287369 h1:uLC4BB6D7GAnp79AR41XMYapZG3dH/Zf3RsaKNA1Tsw=
 github.com/keakon/golog v0.0.0-20221030125838-d449ac287369/go.mod h1:eiN1P12Xfzgefazs96mOt9Iikcwmj4FxVzJeCuOgFdk=
+github.com/keakon/golog v0.0.0-20230320151447-bcec4afe0e72 h1:umVIkMQMWyhnYEMPBEL7ddceiTNk3DuzgarlnF6ygA4=
+github.com/keakon/golog v0.0.0-20230320151447-bcec4afe0e72/go.mod h1:eiN1P12Xfzgefazs96mOt9Iikcwmj4FxVzJeCuOgFdk=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/shamaton/msgpack/v2 v2.1.1 h1:gAMxOtVJz93R0EwewwUc8tx30n34aV6BzJuwHE8ogAk=

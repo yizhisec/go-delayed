@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
-	"github.com/keakon/golog"
 )
 
 type redisArgs struct {
@@ -49,8 +48,6 @@ func TestWorkerRegisterHandlers(t *testing.T) {
 }
 
 func TestWorkerRun(t *testing.T) {
-	initLogger(golog.DebugLevel)
-
 	w := NewWorker(NewQueue("test", NewRedisPool(redisAddr), DequeueTimeout(time.Millisecond*2)), KeepAliveDuration(time.Second))
 	w.RegisterHandlers(panicFunc, redisCall)
 
