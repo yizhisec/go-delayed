@@ -37,7 +37,7 @@ Go-delayed is a simple but robust task queue inspired by [rq](https://python-rq.
 
 3. Enqueue tasks:
 	* Two ways to enqueue Go tasks:
-		* Define task functions:
+		1. Define task functions:
 
 			```Go
 			type Arg struct {
@@ -62,16 +62,21 @@ Go-delayed is a simple but robust task queue inspired by [rq](https://python-rq.
 			task = NewGoTaskOfFunc(syscall.Kill, os.Getpid(), syscall.SIGHUP)
 			queue.Enqueue(task)
 			```
-		* Create a task by func path:
+		2. Create a task by func path:
 
 			```Go
-			task = delayed.NewGoTask("main.f1", Arg{A: 1, B: "test"})
+			task = delayed.NewGoTask("main.f2", 1, &Arg{A: 1, B: "test"})
 			queue.Enqueue(task)
 			```
-	* Enqueue Python tasks:
+			This is the preferred way because `delayed.NewGoTask()` is 100x faster than `delayed.NewGoTaskOfFunc()`.
+	* Enqueue a Python task:
 
 		```Go
-		var task = delayed.NewPyTask("test", []interface{}{1, 2}, Arg{A: 1, B: "test"}) // args must be slice, array or nil, kwArgs must be map, struct or nil
+		var task = delayed.NewPyTask(
+			"module_path:func_name",
+			[]interface{}{1, 2},  // args must be slice, array or nil
+			Arg{A: 1, B: "test"}, // kwArgs must be map, struct or nil
+		)
 		queue.Enqueue(task)
 		```
 

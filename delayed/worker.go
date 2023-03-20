@@ -70,6 +70,8 @@ func (w *Worker) RegisterHandlers(funcs ...interface{}) {
 }
 
 func (w *Worker) Run() {
+	log.Debugf("Starting worker %s.", w.id)
+
 	atomic.StoreUint32(&w.status, StatusRunning)
 	defer func() { atomic.StoreUint32(&w.status, StatusStopped) }()
 
@@ -109,6 +111,7 @@ func (w *Worker) run() {
 
 func (w *Worker) Stop() {
 	if atomic.LoadUint32(&w.status) == StatusRunning {
+		log.Debugf("Stopping worker %s.", w.id)
 		atomic.StoreUint32(&w.status, StatusStopping)
 	}
 }
@@ -127,7 +130,10 @@ func (w *Worker) unregisterSignals() {
 func (w *Worker) Execute(t *GoTask) {
 	h, ok := w.handlers[t.raw.FuncPath]
 	if ok {
+		log.Debugf("Executing task %d.", t.raw.ID)
 		h.Call(t.raw.Payload)
+	} else {
+		log.Debugf("Ignore unregistered task %d: %s", t.raw.ID, t.raw.FuncPath)
 	}
 }
 
