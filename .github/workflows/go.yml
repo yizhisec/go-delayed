@@ -1,6 +1,12 @@
 name: Go
 
-on: [ push, pull_request ]
+on:
+  push:
+    paths-ignore:
+      - '*.md'
+  pull_request:
+    paths-ignore:
+      - '*.md'
 
 jobs:
   test-ubuntu:
@@ -36,7 +42,7 @@ jobs:
         flags: unittests
         verbose: true
     - name: Test without coverage
-      if: ${{ matrix.go-version == '1.19' }}
+      if: ${{ matrix.go-version == '1.13' }}
       run: go test ./...
 
   test-macos:
