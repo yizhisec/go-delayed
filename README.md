@@ -11,12 +11,12 @@ Go-delayed is a simple but robust task queue inspired by [rq](https://python-rq.
 * Robust: all the enqueued tasks will run exactly once, even if the worker got killed at any time.
 * Clean: finished tasks (including failed) take no space of your Redis.
 * Distributed: workers as more as needed can run in the same time without further config.
-* Portable: its Go and Python version can call each other.
+* Portable: its [Go](https://github.com/yizhisec/go-delayed) and [Python](https://github.com/yizhisec/delayed) version can call each other.
 
 ## Requirements
 
 1. Go 1.13 or later, tested on Go 1.13 and 1.20.
-2. To gracefully stop the workers, Unix-like systems (with Unix signal) are required, tested on Ubuntu and macOS.
+2. To gracefully stop the workers, Unix-like systems (with Unix signal) are required, tested on Ubuntu 22.04 and macOS Monterey 12.
 3. Redis 2.6.0 or later (with Lua scripts).
 
 ## Getting started
