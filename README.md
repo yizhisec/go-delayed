@@ -49,8 +49,20 @@ Go-delayed is a simple but robust task queue inspired by [rq](https://python-rq.
 				return a.A + len(a.B)
 			}
 
-			func f2(a, b *Arg) int {
-				return a.A + len(a.B) + b.A + len(b.B)
+			func f2(a int, b *Arg) int {
+				return a + b.A + len(b.B)
+			}
+
+			func f3(a int, b *Arg, c []int) int {
+				return a + b.A + len(b.B) + len(c)
+			}
+
+			func f4(a ...int) int {
+				return len(a)
+			}
+
+			func f5(a int, b *Arg, c []int, d ...int) int {
+				return a + b.A + len(b.B) + len(c) + len(d)
 			}
 
 			var task = delayed.NewGoTaskOfFunc(f1, Arg{A: 1, B: "test"})
@@ -59,7 +71,17 @@ Go-delayed is a simple but robust task queue inspired by [rq](https://python-rq.
 			queue.Enqueue(task)
 			task = delayed.NewGoTaskOfFunc(f2, 1, &Arg{A: 1, B: "test"}) // same as the above task
 			queue.Enqueue(task)
-			task = NewGoTaskOfFunc(syscall.Kill, os.Getpid(), syscall.SIGHUP)
+			task = delayed.NewGoTaskOfFunc(f2, 1, []interface{}{1, "test"}) // use slice as strut is also ok
+			queue.Enqueue(task)
+			task = delayed.NewGoTaskOfFunc(f3, new(uint), Arg{A: 1, B: "test"}, []interface{}{uint(2), int8(3)}) // use compatible arguments is also ok
+			queue.Enqueue(task)
+			task = delayed.NewGoTaskOfFunc(f4, []interface{}{1, 2, 3})
+			queue.Enqueue(task)
+			task = delayed.NewGoTaskOfFunc(f4, 1, 2, 3) // if the variadic argument is the only argument, it's not required to build a slice
+			queue.Enqueue(task)
+			task = delayed.NewGoTaskOfFunc(f5, 1, &Arg{A: 1, B: "test"}, []int{2, 3}, []int{4, 5, 6})
+			queue.Enqueue(task)
+			task = delayed.NewGoTaskOfFunc(syscall.Kill, os.Getpid(), syscall.SIGHUP)
 			queue.Enqueue(task)
 			```
 		2. Create a task by func path:

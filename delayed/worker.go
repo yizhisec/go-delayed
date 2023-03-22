@@ -132,7 +132,10 @@ func (w *Worker) unregisterSignals() {
 func (w *Worker) Execute(t *GoTask) {
 	h, ok := w.handlers[t.raw.FuncPath]
 	if ok {
-		h.Call(t.raw.Payload)
+		_, err := h.Call(t.raw.Payload)
+		if err != nil {
+			log.Errorf("Failed to execute task %d: %v", t.raw.ID, err)
+		}
 	} else {
 		log.Debugf("Ignore unregistered task %d: %s", t.raw.ID, t.raw.FuncPath)
 	}

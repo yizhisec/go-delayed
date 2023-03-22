@@ -11,11 +11,12 @@ import (
 )
 
 type Handler struct {
-	fn       reflect.Value
-	path     string
-	argCount int
-	arg      interface{}
-	args     []reflect.Value
+	fn         reflect.Value
+	path       string
+	isVariadic bool
+	argCount   int
+	arg        interface{}
+	args       []reflect.Value
 }
 
 func NewHandler(f interface{}) (h *Handler) {
@@ -40,10 +41,7 @@ func NewHandler(f interface{}) (h *Handler) {
 	if h.argCount == 0 {
 		h.args = []reflect.Value{}
 	} else {
-		if strings.Contains(fnType.String(), "...") { // variadic function is not supported
-			return nil
-		}
-
+		h.isVariadic = strings.Contains(fnType.String(), "...")
 		if h.argCount == 1 {
 			argType := fnType.In(0)
 			arg := reflect.New(argType)
@@ -72,15 +70,21 @@ func NewHandler(f interface{}) (h *Handler) {
 
 func (h *Handler) Call(payload []byte) (result []reflect.Value, err error) {
 	if h.argCount == 0 {
+		if h.isVariadic {
+			return h.fn.CallSlice(h.args), nil
+		}
 		return h.fn.Call(h.args), nil
 	}
 	if h.argCount == 1 {
 		if len(payload) != 0 { // not nil
-			err := msgpack.Unmarshal(payload, h.arg)
+			err := msgpack.UnmarshalAsArray(payload, h.arg)
 			if err != nil {
 				log.Errorf("unmarshal payload error: %v", err)
 				return nil, err
 			}
+		}
+		if h.isVariadic {
+			return h.fn.CallSlice(h.args), nil
 		}
 		return h.fn.Call(h.args), nil
 	}
@@ -88,6 +92,9 @@ func (h *Handler) Call(payload []byte) (result []reflect.Value, err error) {
 	err = msgpack.UnmarshalAsArray(payload, h.arg)
 	if err != nil {
 		return nil, err
+	}
+	if h.isVariadic {
+		return h.fn.CallSlice(h.args), nil
 	}
 	return h.fn.Call(h.args), nil
 }

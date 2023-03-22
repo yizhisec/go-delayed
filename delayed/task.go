@@ -74,11 +74,7 @@ func (t *GoTask) Equal(task *GoTask) bool {
 
 func (t *GoTask) Serialize() (data []byte, err error) {
 	if t.arg != nil {
-		if reflect.TypeOf(t.arg).Kind() == reflect.Slice {
-			t.raw.Payload, err = msgpack.MarshalAsArray(t.arg)
-		} else {
-			t.raw.Payload, err = msgpack.Marshal(t.arg)
-		}
+		t.raw.Payload, err = msgpack.MarshalAsArray(t.arg)
 		if err != nil {
 			log.Errorf("Failed to serialize task.arg: %v", err)
 			return
