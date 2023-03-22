@@ -121,3 +121,42 @@ Go-delayed is a simple but robust task queue inspired by [rq](https://python-rq.
 		delayed.NewQueue("test", delayed.NewRedisPool(":6380")),
 	).Run()
     ```
+
+## QA
+
+1. **Q: What's the limitation on a task function?**  
+A: A Go task function must be exported and has a name. So `func f(){}` and `var F = func(){}` cannot be task functions.
+Its args should be exported and be serializable by [MessagePack](https://msgpack.org/).
+
+2. **Q: What's the `name` param of a queue?**  
+A: It's the key used to store the tasks of the queue. A queue with name "default" will use those keys:
+    * default: list, enqueued tasks.
+    * default_id: str, the next task id.
+    * default_noti: list, the same length as enqueued tasks.
+    * default_processing: hash, the processing task of workers.
+
+3. **Q: What's lost tasks?**  
+A: There are 2 situations a task might get lost:
+    * a worker popped a task notification, then got killed before dequeueing the task.
+    * a worker dequeued a task, then got killed before releasing the task.
+
+4. **Q: How to recovery lost tasks?**  
+A: Runs a sweeper. It dose two things:
+    * it keeps the task notification length the same as the task queue.
+    * it checks the processing list, if the worker is dead, moves the processing task back to the task queue.
+
+5. **Q: How to turn on the debug logs?**  
+A: Sets the default logger to debug level:
+
+    ```Go
+	import (
+		"github.com/keakon/golog"
+		"github.com/keakon/golog/log"
+	)
+
+	h := golog.NewHandler(golog.DebugLevel, golog.DefaultFormatter)
+	h.AddWriter(golog.NewStdoutWriter())
+	l := golog.NewLogger(golog.DebugLevel)
+	l.AddHandler(h)
+	log.SetDefaultLogger(l)
+    ```

@@ -27,6 +27,10 @@ func TestQueueEnqueue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	err = q.Enqueue(NewPyTask("test.f1", []interface{}{1, 2}, tArg))
+	if err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestQueueLen(t *testing.T) {
