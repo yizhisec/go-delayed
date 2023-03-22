@@ -67,15 +67,18 @@ Go-delayed is a simple but robust task queue inspired by [rq](https://python-rq.
 			```Go
 			task = delayed.NewGoTask("main.f2", 1, &Arg{A: 1, B: "test"})
 			queue.Enqueue(task)
+
+			task = delayed.NewGoTask("net/http.Get", "http://example.com/")
+			queue.Enqueue(task)
 			```
 			This is the preferred way because `delayed.NewGoTask()` is 100x faster than `delayed.NewGoTaskOfFunc()`.
 	* Enqueue a Python task:
 
 		```Go
 		var task = delayed.NewPyTask(
-			"module_path:func_name",
-			[]interface{}{1, 2},  // args must be slice, array or nil
-			Arg{A: 1, B: "test"}, // kwArgs must be map, struct or nil
+			"module.path:func_name", // eg: os.path:join
+			[]interface{}{1, 2},     // args must be a slice, array or nil
+			Arg{A: 1, B: "test"},    // kwArgs must be a map, struct or nil
 		)
 		queue.Enqueue(task)
 		```

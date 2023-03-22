@@ -47,6 +47,25 @@ func f8(a, b *testArg) int {
 	return a.A + len(a.B) + b.A + len(b.B)
 }
 
+func f9(a []int, b testArg) int {
+	sum := 0
+	for _, i := range a {
+		sum += i
+	}
+	return sum + b.A + len(b.B)
+}
+
+func f10(a [3]int, b []int) int {
+	sum := 0
+	for _, i := range a {
+		sum += i
+	}
+	for _, i := range b {
+		sum += i
+	}
+	return sum
+}
+
 func TestNewHandler(t *testing.T) {
 	tests := []struct {
 		name string
@@ -143,6 +162,20 @@ func TestNewHandler(t *testing.T) {
 			wantArgCount: 2,
 			wantPath:     "github.com/yizhisec/go-delayed/delayed.f8",
 		},
+		{
+			name:         "[]int + struct args",
+			f:            f9,
+			wantFn:       reflect.ValueOf(f9),
+			wantArgCount: 2,
+			wantPath:     "github.com/yizhisec/go-delayed/delayed.f9",
+		},
+		{
+			name:         "[3]int + []int args",
+			f:            f10,
+			wantFn:       reflect.ValueOf(f10),
+			wantArgCount: 2,
+			wantPath:     "github.com/yizhisec/go-delayed/delayed.f10",
+		},
 	}
 
 	for _, tt := range tests2 {
@@ -168,43 +201,43 @@ func TestHandlerCall(t *testing.T) {
 	tests := []struct {
 		name string
 		f    interface{}
-		args []interface{}
+		args interface{}
 		want int
 	}{
 		{
 			name: "struct arg",
 			f:    f1,
-			args: []interface{}{tArg},
+			args: tArg,
 			want: 5,
 		},
 		{
 			name: "nil struct arg",
 			f:    f1,
-			args: []interface{}{nil},
+			args: nil,
 			want: 0,
 		},
 		{
 			name: "*struct arg",
 			f:    f2,
-			args: []interface{}{&tArg},
+			args: &tArg,
 			want: 5,
 		},
 		{
 			name: "nil *struct arg",
 			f:    f2,
-			args: []interface{}{nil},
+			args: nil,
 			want: 0,
 		},
 		{
 			name: "int arg",
 			f:    f3,
-			args: []interface{}{1},
+			args: 1,
 			want: 1,
 		},
 		{
 			name: "*int arg",
 			f:    f4,
-			args: []interface{}{new(int)},
+			args: new(int),
 			want: 0,
 		},
 		{
@@ -216,20 +249,32 @@ func TestHandlerCall(t *testing.T) {
 		{
 			name: "int args",
 			f:    f6,
-			args: []interface{}{2, 3},
+			args: []int{2, 3},
 			want: 5,
 		},
 		{
 			name: "struct args",
 			f:    f7,
-			args: []interface{}{tArg, tArg},
+			args: []testArg{tArg, tArg},
 			want: 10,
 		},
 		{
 			name: "*struct args",
 			f:    f8,
-			args: []interface{}{&tArg, &tArg},
+			args: []*testArg{&tArg, &tArg},
 			want: 10,
+		},
+		{
+			name: "[]int + struct args",
+			f:    f9,
+			args: []interface{}{[]int{1, 2, 3}, tArg},
+			want: 11,
+		},
+		{
+			name: "[3]int + []int args",
+			f:    f10,
+			args: []interface{}{[3]int{1, 2, 3}, []int{4, 5}},
+			want: 15,
 		},
 	}
 
@@ -242,18 +287,18 @@ func TestHandlerCall(t *testing.T) {
 				err error
 			)
 
-			argCount := len(tt.args)
-			if argCount == 1 {
-				if tt.args[0] != nil {
-					p, err = msgpack.Marshal(tt.args[0])
+			if tt.args != nil {
+				argsRef := reflect.ValueOf(tt.args)
+				if argsRef.Kind() == reflect.Slice {
+					p, err = msgpack.MarshalAsArray(tt.args)
 					if err != nil {
 						t.Fatal(err)
 					}
-				}
-			} else if argCount > 1 {
-				p, err = msgpack.MarshalAsArray(tt.args)
-				if err != nil {
-					t.Fatal(err)
+				} else {
+					p, err = msgpack.Marshal(tt.args)
+					if err != nil {
+						t.Fatal(err)
+					}
 				}
 			}
 

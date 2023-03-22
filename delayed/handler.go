@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"runtime"
 	"strconv"
+	"strings"
 
 	"github.com/keakon/golog/log"
 	"github.com/shamaton/msgpack/v2"
@@ -28,36 +29,42 @@ func NewHandler(f interface{}) (h *Handler) {
 		return nil
 	}
 
+	fnType := fn.Type()
 	h = &Handler{
-		fn:   fn,
-		path: path,
+		fn:       fn,
+		path:     path,
+		argCount: fnType.NumIn(),
 	}
 
-	fnType := fn.Type()
-	h.argCount = fnType.NumIn()
 	// the rest fields can be reused among tasks, because the worker won't handle tasks concurrently
 	if h.argCount == 0 {
 		h.args = []reflect.Value{}
-	} else if h.argCount == 1 {
-		argType := fnType.In(0)
-		arg := reflect.New(argType)
-		h.arg = arg.Interface()
-		h.args = []reflect.Value{arg.Elem()}
-	} else if h.argCount > 1 {
-		fields := make([]reflect.StructField, h.argCount)
-		for i := 0; i < h.argCount; i++ {
-			arg := fnType.In(i)
-			fields[i] = reflect.StructField{
-				Name: "F" + strconv.Itoa(i),
-				Type: arg,
-			}
+	} else {
+		if strings.Contains(fnType.String(), "...") { // variadic function is not supported
+			return nil
 		}
-		argType := reflect.StructOf(fields)
-		arg := reflect.New(argType)
-		h.arg = arg.Interface()
-		h.args = make([]reflect.Value, h.argCount)
-		for i := 0; i < h.argCount; i++ {
-			h.args[i] = arg.Elem().Field(i)
+
+		if h.argCount == 1 {
+			argType := fnType.In(0)
+			arg := reflect.New(argType)
+			h.arg = arg.Interface()
+			h.args = []reflect.Value{arg.Elem()}
+		} else if h.argCount > 1 {
+			fields := make([]reflect.StructField, h.argCount)
+			for i := 0; i < h.argCount; i++ {
+				arg := fnType.In(i)
+				fields[i] = reflect.StructField{
+					Name: "F" + strconv.Itoa(i),
+					Type: arg,
+				}
+			}
+			argType := reflect.StructOf(fields)
+			arg := reflect.New(argType)
+			h.arg = arg.Interface()
+			h.args = make([]reflect.Value, h.argCount)
+			for i := 0; i < h.argCount; i++ {
+				h.args[i] = arg.Elem().Field(i)
+			}
 		}
 	}
 	return

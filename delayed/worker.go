@@ -63,8 +63,10 @@ func NewWorker(queue *Queue, options ...WorkerOption) *Worker {
 func (w *Worker) RegisterHandlers(funcs ...interface{}) {
 	for _, f := range funcs {
 		h := NewHandler(f)
-		if f != nil {
+		if h != nil {
 			w.handlers[h.path] = h
+		} else {
+			log.Warnf("%#v is not a valid handler", f)
 		}
 	}
 }
