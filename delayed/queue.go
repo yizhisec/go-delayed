@@ -43,7 +43,7 @@ for i = 1, #processing_tasks, 2 do
 end
 if count > 0 then
     local noti_array = {}
-    for i=1,count,1 do
+    for i = 1, count , 1 do
         table.insert(noti_array, '1')
     end
     redis.call('lpush', KEYS[2], unpack(noti_array))
@@ -53,6 +53,7 @@ return count`
 
 var InvalidRedisReplyError = errors.New("Invalid redis reply")
 
+// Queue is the struct of a task queue.
 type Queue struct {
 	workerID         string
 	name             string
@@ -71,7 +72,9 @@ type Queue struct {
 
 type QueueOption func(*Queue)
 
-func DequeueTimeout(d time.Duration) QueueOption { // must be larger than 1 ms, redis BLPOP treats timeout equal or less than 0.001 second as 0 (forever)
+// DequeueTimeout sets the dequeue timeout of a queue.
+// It must be larger than 1 ms, Redis BLPOP treats timeout equal or less than 0.001 second as 0 (forever).
+func DequeueTimeout(d time.Duration) QueueOption {
 	return func(q *Queue) {
 		if d > time.Millisecond {
 			q.dequeueTimeout = float32(d/time.Millisecond) * 0.001
@@ -81,6 +84,7 @@ func DequeueTimeout(d time.Duration) QueueOption { // must be larger than 1 ms, 
 	}
 }
 
+// KeepAliveTimeout sets the keep alive timeout of the worker of a queue.
 func KeepAliveTimeout(d time.Duration) QueueOption {
 	return func(q *Queue) {
 		if d == 0 {
@@ -91,6 +95,7 @@ func KeepAliveTimeout(d time.Duration) QueueOption {
 	}
 }
 
+// NewQueue creates a new queue.
 func NewQueue(name string, redisPool *redis.Pool, options ...QueueOption) *Queue {
 	queue := &Queue{
 		name:              name,
@@ -129,6 +134,7 @@ func (q *Queue) die() error {
 	return err
 }
 
+// Clear removes all data related to the queue in Redis.
 func (q *Queue) Clear() error {
 	conn := q.redis.Get()
 	defer conn.Close()
@@ -137,6 +143,7 @@ func (q *Queue) Clear() error {
 	return err
 }
 
+// Len returns the task count of the queue.
 func (q *Queue) Len() (count int, err error) {
 	conn := q.redis.Get()
 	defer conn.Close()
@@ -144,6 +151,7 @@ func (q *Queue) Len() (count int, err error) {
 	return redis.Int(conn.Do("LLEN", q.name))
 }
 
+// Enqueue appends a task to the queue.
 func (q *Queue) Enqueue(task Task) (err error) {
 	conn := q.redis.Get()
 	defer conn.Close()
@@ -166,6 +174,7 @@ func (q *Queue) Enqueue(task Task) (err error) {
 	return
 }
 
+// Dequeue pops a task from the front of the queue.
 func (q *Queue) Dequeue() (task *GoTask, err error) {
 	conn := q.redis.Get()
 	defer conn.Close()
@@ -204,6 +213,8 @@ func (q *Queue) Dequeue() (task *GoTask, err error) {
 	}
 }
 
+// Release releases the currently dequeued task.
+// It should be called after finishing a task.
 func (q *Queue) Release() (err error) {
 	conn := q.redis.Get()
 	defer conn.Close()
@@ -216,6 +227,9 @@ func (q *Queue) Release() (err error) {
 	return
 }
 
+// RequeueLost finds out lost tasks and recovers them.
+// It should be called periodically to prevent losing tasks.
+// The lost tasks were those popped from the queue, but its dead worker hadn't released it.
 func (q *Queue) RequeueLost() (count int, err error) {
 	conn := q.redis.Get()
 	defer conn.Close()

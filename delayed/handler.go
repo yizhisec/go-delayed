@@ -10,15 +10,17 @@ import (
 	"github.com/shamaton/msgpack/v2"
 )
 
+// A handler stores a function and other information about how to call it.
 type Handler struct {
-	fn         reflect.Value
+	fn         reflect.Value // the reflected function
 	path       string
-	isVariadic bool
 	argCount   int
-	arg        interface{}
-	args       []reflect.Value
+	arg        interface{}     // a point to the only argument or to a struct which represents the arguments
+	args       []reflect.Value // the prebuilt arguments for fn.Call() or fn.CallSlice(), each element of it references the same one as arg (the only argument) or one field of arg (a struct represents the arguments)
+	isVariadic bool
 }
 
+// NewHandler creates a handler for a function.
 func NewHandler(f interface{}) (h *Handler) {
 	fn := reflect.ValueOf(f)
 	if fn.Kind() != reflect.Func {
@@ -47,7 +49,7 @@ func NewHandler(f interface{}) (h *Handler) {
 			arg := reflect.New(argType)
 			h.arg = arg.Interface()
 			h.args = []reflect.Value{arg.Elem()}
-		} else if h.argCount > 1 {
+		} else {
 			fields := make([]reflect.StructField, h.argCount)
 			for i := 0; i < h.argCount; i++ {
 				arg := fnType.In(i)
@@ -58,16 +60,18 @@ func NewHandler(f interface{}) (h *Handler) {
 			}
 			argType := reflect.StructOf(fields)
 			arg := reflect.New(argType)
+			argElem := arg.Elem()
 			h.arg = arg.Interface()
 			h.args = make([]reflect.Value, h.argCount)
 			for i := 0; i < h.argCount; i++ {
-				h.args[i] = arg.Elem().Field(i)
+				h.args[i] = argElem.Field(i)
 			}
 		}
 	}
 	return
 }
 
+// Call executes the function of a handler.
 func (h *Handler) Call(payload []byte) (result []reflect.Value, err error) {
 	if h.argCount > 0 && len(payload) > 0 {
 		err := msgpack.UnmarshalAsArray(payload, h.arg)

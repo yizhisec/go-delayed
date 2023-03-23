@@ -6,6 +6,7 @@ import (
 	"github.com/gomodule/redigo/redis"
 )
 
+// NewRedisPool creates a new redis pool.
 func NewRedisPool(address string, options ...redis.DialOption) *redis.Pool {
 	return &redis.Pool{
 		MaxIdle:     1,

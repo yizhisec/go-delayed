@@ -24,6 +24,7 @@ const (
 
 type WorkerOption func(*Worker)
 
+// KeepAliveDuration sets the keep alive duration of a worker.
 func KeepAliveDuration(d time.Duration) WorkerOption {
 	return func(w *Worker) {
 		if d > 0 {
@@ -34,6 +35,7 @@ func KeepAliveDuration(d time.Duration) WorkerOption {
 	}
 }
 
+// Worker keeps dequeuing and processing Go tasks.
 type Worker struct {
 	id                string
 	queue             *Queue
@@ -43,6 +45,7 @@ type Worker struct {
 	sigChan           chan os.Signal
 }
 
+// NewWorker creates a new worker.
 func NewWorker(queue *Queue, options ...WorkerOption) *Worker {
 	id := RandHexString(16)
 	queue.workerID = id
@@ -60,6 +63,8 @@ func NewWorker(queue *Queue, options ...WorkerOption) *Worker {
 	return worker
 }
 
+// RegisterHandlers registers handlers.
+// Tasks with function not been registered will be ignored.
 func (w *Worker) RegisterHandlers(funcs ...interface{}) {
 	for _, f := range funcs {
 		h := NewHandler(f)
@@ -71,6 +76,7 @@ func (w *Worker) RegisterHandlers(funcs ...interface{}) {
 	}
 }
 
+// Run starts the worker.
 func (w *Worker) Run() {
 	log.Debugf("Starting worker %s.", w.id)
 
@@ -111,6 +117,7 @@ func (w *Worker) run() {
 	}
 }
 
+// Stop stops the worker.
 func (w *Worker) Stop() {
 	if atomic.LoadUint32(&w.status) == StatusRunning {
 		log.Debugf("Stopping worker %s.", w.id)
@@ -129,6 +136,7 @@ func (w *Worker) unregisterSignals() {
 	w.sigChan = nil
 }
 
+// Execute executes a task.
 func (w *Worker) Execute(t *GoTask) {
 	h, ok := w.handlers[t.raw.FuncPath]
 	if ok {
@@ -141,6 +149,7 @@ func (w *Worker) Execute(t *GoTask) {
 	}
 }
 
+// KeepAlive keeps the worker alive.
 func (w *Worker) KeepAlive() {
 	w.keepAlive()
 
