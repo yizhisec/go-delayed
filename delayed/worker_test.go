@@ -125,13 +125,15 @@ func TestWorkerSignal(t *testing.T) {
 	w.Run()
 }
 
-func noArgFunc()                   {}
-func intFunc(int)                  {}
-func intPFunc(*int)                {}
-func int2Func(int, int)            {}
-func structFunc(testArg)           {}
-func structPFunc(*testArg)         {}
-func struct2Func(testArg, testArg) {}
+func noArgFunc()                               {}
+func intFunc(int)                              {}
+func intPFunc(*int)                            {}
+func int2Func(int, int)                        {}
+func structFunc(testArg)                       {}
+func structPFunc(*testArg)                     {}
+func struct2Func(testArg, testArg)             {}
+func variadicIntFunc(...int)                   {}
+func intAndVariadicStructFunc(int, ...testArg) {}
 
 func BenchmarkWorkerExecute(b *testing.B) {
 	w := Worker{handlers: map[string]*Handler{}}
@@ -175,6 +177,16 @@ func BenchmarkWorkerExecute(b *testing.B) {
 			name: "struct 2 args",
 			fn:   struct2Func,
 			arg:  []testArg{{}, tArg},
+		},
+		{
+			name: "variadic int args",
+			fn:   variadicIntFunc,
+			arg:  []int{1, 2},
+		},
+		{
+			name: "int + variadic struct args",
+			fn:   intAndVariadicStructFunc,
+			arg:  []interface{}{1, []testArg{{}, tArg}},
 		},
 	}
 

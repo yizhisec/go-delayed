@@ -131,7 +131,6 @@ Its args should be exported and be serializable by [MessagePack](https://msgpack
 2. **Q: What's the `name` param of a queue?**  
 A: It's the key used to store the tasks of the queue. A queue with name "default" will use those keys:
     * default: list, enqueued tasks.
-    * default_id: str, the next task id.
     * default_noti: list, the same length as enqueued tasks.
     * default_processing: hash, the processing task of workers.
 

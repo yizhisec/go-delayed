@@ -11,12 +11,10 @@ import (
 
 type Task interface {
 	Serialize() ([]byte, error)
-	getID() *uint64
-	getData() []byte
+	getFuncPath() string
 }
 
 type RawGoTask struct {
-	ID       uint64
 	FuncPath string
 	Payload  []byte // serialized arg
 }
@@ -69,10 +67,14 @@ func NewGoTaskOfFunc(f interface{}, arg ...interface{}) *GoTask {
 
 func (t *GoTask) Equal(task *GoTask) bool {
 	// it may return false if one task is not serialized and the other is deserialized
-	return t.raw.ID == task.raw.ID && t.raw.FuncPath == task.raw.FuncPath && (bytes.Equal(t.raw.Payload, task.raw.Payload) || reflect.DeepEqual(t.arg, task.arg))
+	return t.raw.FuncPath == task.raw.FuncPath && (bytes.Equal(t.raw.Payload, task.raw.Payload) || reflect.DeepEqual(t.arg, task.arg))
 }
 
 func (t *GoTask) Serialize() (data []byte, err error) {
+	if len(t.data) != 0 {
+		return t.data, nil
+	}
+
 	if t.arg != nil {
 		t.raw.Payload, err = msgpack.MarshalAsArray(t.arg)
 		if err != nil {
@@ -101,16 +103,11 @@ func DeserializeGoTask(data []byte) (task *GoTask, err error) {
 	return t, nil
 }
 
-func (t *GoTask) getID() *uint64 {
-	return &t.raw.ID
-}
-
-func (t *GoTask) getData() []byte {
-	return t.data
+func (t *GoTask) getFuncPath() string {
+	return t.raw.FuncPath
 }
 
 type RawPyTask struct {
-	ID       uint64
 	FuncPath string
 	Args     interface{} // must be slice, array or nil
 	KwArgs   interface{} // must be map, struct or nil
@@ -140,10 +137,6 @@ func (t *PyTask) Serialize() (data []byte, err error) {
 	return t.data, nil
 }
 
-func (t *PyTask) getID() *uint64 {
-	return &t.raw.ID
-}
-
-func (t *PyTask) getData() []byte {
-	return t.data
+func (t *PyTask) getFuncPath() string {
+	return t.raw.FuncPath
 }

@@ -46,7 +46,6 @@ func TestQueueLen(t *testing.T) {
 
 	for i, tt := range taskTestCases {
 		task := NewGoTask(tt.funcPath, tt.arg)
-		*task.getID() = tt.id
 		err := q.Enqueue(task)
 		if err != nil {
 			t.Fatal(err)
@@ -85,7 +84,6 @@ func TestQueueDequeue(t *testing.T) {
 	for _, tt := range taskTestCases {
 		t.Run(tt.name, func(t *testing.T) {
 			task1 := NewGoTask(tt.funcPath, tt.arg)
-			*task1.getID() = tt.id
 			err := q.Enqueue(task1)
 			if err != nil {
 				t.Fatal(err)
@@ -110,7 +108,6 @@ func TestQueueDequeue(t *testing.T) {
 	tasks := []*GoTask{}
 	for _, tt := range taskTestCases {
 		task := NewGoTask(tt.funcPath, tt.arg)
-		*task.getID() = tt.id
 		err := q.Enqueue(task)
 		if err != nil {
 			t.Fatal(err)
@@ -139,7 +136,6 @@ func TestQueueRelease(t *testing.T) {
 
 	for _, tt := range taskTestCases {
 		task := NewGoTask(tt.funcPath, tt.arg)
-		*task.getID() = tt.id
 		err := q.Enqueue(task)
 		if err != nil {
 			t.Fatal(err)
@@ -227,7 +223,6 @@ func TestQueueRequeueLost(t *testing.T) {
 
 	for _, tt := range taskTestCases {
 		task := NewGoTask(tt.funcPath, tt.arg)
-		*task.getID() = tt.id
 		q.Enqueue(task)
 		q.Dequeue()
 	}
@@ -264,7 +259,7 @@ func TestQueueRequeueLost(t *testing.T) {
 	if task == nil {
 		t.FailNow()
 	}
-	if task.raw.ID != taskTestCases[len(taskTestCases)-1].id {
+	if task.raw.FuncPath != taskTestCases[len(taskTestCases)-1].funcPath {
 		t.FailNow()
 	}
 
@@ -279,7 +274,6 @@ func TestQueueRequeueLost(t *testing.T) {
 	q.keepAlive()
 	tt := taskTestCases[0]
 	task = NewGoTask(tt.funcPath, tt.arg)
-	*task.getID() = tt.id
 	q.Enqueue(task)
 	q.Dequeue()
 	assertLostLen(0)
@@ -296,7 +290,7 @@ func TestQueueRequeueLost(t *testing.T) {
 	if task == nil {
 		t.FailNow()
 	}
-	if task.raw.ID != tt.id {
+	if task.raw.FuncPath != tt.funcPath {
 		t.FailNow()
 	}
 
@@ -308,4 +302,23 @@ func TestQueueRequeueLost(t *testing.T) {
 
 	assertLostLen(0)
 	assertLen(0)
+}
+
+func BenchmarkQueueEnqueueAndDequeue(b *testing.B) {
+	q := NewQueue("test", NewRedisPool(redisAddr))
+	defer q.Clear()
+
+	for i := 0; i < b.N; i++ {
+		err := q.Enqueue(NewGoTask("test", []interface{}{1, 2.0, "test", []int{4, 5}}))
+		if err != nil {
+			b.Fatal(err)
+		}
+		task, err := q.Dequeue()
+		if err != nil {
+			b.Fatal(err)
+		}
+		if task == nil {
+			b.Fatal("dequeued task is nil")
+		}
+	}
 }

@@ -69,29 +69,12 @@ func NewHandler(f interface{}) (h *Handler) {
 }
 
 func (h *Handler) Call(payload []byte) (result []reflect.Value, err error) {
-	if h.argCount == 0 {
-		if h.isVariadic {
-			return h.fn.CallSlice(h.args), nil
+	if h.argCount > 0 && len(payload) > 0 {
+		err := msgpack.UnmarshalAsArray(payload, h.arg)
+		if err != nil {
+			log.Errorf("unmarshal payload error: %v", err)
+			return nil, err
 		}
-		return h.fn.Call(h.args), nil
-	}
-	if h.argCount == 1 {
-		if len(payload) != 0 { // not nil
-			err := msgpack.UnmarshalAsArray(payload, h.arg)
-			if err != nil {
-				log.Errorf("unmarshal payload error: %v", err)
-				return nil, err
-			}
-		}
-		if h.isVariadic {
-			return h.fn.CallSlice(h.args), nil
-		}
-		return h.fn.Call(h.args), nil
-	}
-	// h.argCount > 1
-	err = msgpack.UnmarshalAsArray(payload, h.arg)
-	if err != nil {
-		return nil, err
 	}
 	if h.isVariadic {
 		return h.fn.CallSlice(h.args), nil

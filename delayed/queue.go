@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/keakon/golog"
 	"github.com/keakon/golog/log"
 )
 
 const (
-	idKeySuffix         = "_id"
 	notiKeySuffix       = "_noti"
 	processingKeySuffix = "_processing"
 
@@ -56,7 +56,6 @@ var InvalidRedisReplyError = errors.New("Invalid redis reply")
 type Queue struct {
 	workerID         string
 	name             string
-	idKey            string
 	notiKey          string
 	processingKey    string
 	dequeueTimeout   float32 // seconds
@@ -95,7 +94,6 @@ func KeepAliveTimeout(d time.Duration) QueueOption {
 func NewQueue(name string, redisPool *redis.Pool, options ...QueueOption) *Queue {
 	queue := &Queue{
 		name:              name,
-		idKey:             name + idKeySuffix,
 		notiKey:           name + notiKeySuffix,
 		processingKey:     name + processingKeySuffix,
 		dequeueTimeout:    defaultDequeueTimeout,
@@ -135,7 +133,7 @@ func (q *Queue) Clear() error {
 	conn := q.redis.Get()
 	defer conn.Close()
 
-	_, err := conn.Do("DEL", q.name, q.idKey, q.notiKey, q.processingKey, q.workerID)
+	_, err := conn.Do("DEL", q.name, q.notiKey, q.processingKey, q.workerID)
 	return err
 }
 
@@ -150,25 +148,10 @@ func (q *Queue) Enqueue(task Task) (err error) {
 	conn := q.redis.Get()
 	defer conn.Close()
 
-	taskID := task.getID()
-	if *taskID == 0 {
-		id, err := redis.Uint64(conn.Do("INCR", q.idKey))
-		if err != nil {
-			log.Errorf("Failed to generate task id: %v", err)
-			return err
-		}
-		*taskID = id
-	}
-
-	log.Debugf("Enqueuing task %d", *taskID)
-
-	data := task.getData()
-	if len(data) == 0 {
-		data, err = task.Serialize()
-		if err != nil {
-			log.Errorf("Failed to serialize task %d: %v", *taskID, err)
-			return
-		}
+	data, err := task.Serialize()
+	if err != nil {
+		log.Errorf("Failed to serialize task %s: %v", task.getFuncPath(), err)
+		return
 	}
 
 	err = conn.Send("RPUSH", q.name, data)
@@ -176,9 +159,9 @@ func (q *Queue) Enqueue(task Task) (err error) {
 		return
 	}
 
-	_, err = conn.Do("RPUSH", q.notiKey, 1) // use Do() to combine Send(), Flush() and Receive()
-	if err == nil {
-		log.Debugf("Enqueued task %d", *taskID)
+	_, err = conn.Do("RPUSH", q.notiKey, 1)               // use Do() to combine Send(), Flush() and Receive()
+	if err == nil && log.IsEnabledFor(golog.DebugLevel) { // check log level before calling task.getFuncPath()
+		log.Debugf("Enqueued task %s.", task.getFuncPath())
 	}
 	return
 }
@@ -213,7 +196,7 @@ func (q *Queue) Dequeue() (task *GoTask, err error) {
 		}
 		task, err = DeserializeGoTask(data)
 		if err == nil {
-			log.Debugf("Dequeued task %d.", task.raw.ID)
+			log.Debugf("Dequeued task %s.", task.raw.FuncPath)
 		}
 		return
 	} else {

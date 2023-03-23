@@ -134,10 +134,10 @@ func (w *Worker) Execute(t *GoTask) {
 	if ok {
 		_, err := h.Call(t.raw.Payload)
 		if err != nil {
-			log.Errorf("Failed to execute task %d: %v", t.raw.ID, err)
+			log.Errorf("Failed to execute task %s: %v", t.raw.FuncPath, err)
 		}
 	} else {
-		log.Debugf("Ignore unregistered task %d: %s", t.raw.ID, t.raw.FuncPath)
+		log.Debugf("Ignore unregistered task: %s", t.raw.FuncPath)
 	}
 }
 

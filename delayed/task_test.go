@@ -9,43 +9,36 @@ var (
 
 	taskTestCases = []struct {
 		name     string
-		id       uint64
 		funcPath string
 		arg      interface{}
 	}{
 		{
 			name:     "nil arg",
-			id:       1,
 			funcPath: "test",
 			arg:      nil,
 		},
 		{
 			name:     "struct arg",
-			id:       2,
 			funcPath: "test",
 			arg:      tArg,
 		},
 		{
 			name:     "*struct arg",
-			id:       3,
 			funcPath: "test",
 			arg:      &tArg,
 		},
 		{
 			name:     "int arg",
-			id:       4,
 			funcPath: "test",
 			arg:      1,
 		},
 		{
 			name:     "int args",
-			id:       5,
 			funcPath: "test",
 			arg:      []int{1, 2},
 		},
 		{
 			name:     "struct args",
-			id:       6,
 			funcPath: "test",
 			arg:      []testArg{tArg, tArg},
 		},
@@ -54,14 +47,12 @@ var (
 
 func TestGoTaskSerialize(t *testing.T) {
 	task1 := NewGoTask("test", nil)
-	*task1.getID() = 1
 	_, err := task1.Serialize()
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	task2 := NewGoTask("test", tArg)
-	*task2.getID() = 2
 	_, err = task2.Serialize()
 	if err != nil {
 		t.Fatal(err)
@@ -72,7 +63,6 @@ func TestGoTaskSerialize(t *testing.T) {
 	}
 
 	task3 := NewGoTask("test", &tArg)
-	*task3.getID() = 3
 	_, err = task3.Serialize()
 	if err != nil {
 		t.Fatal(err)
@@ -87,9 +77,7 @@ func TestDeserializeGoTask(t *testing.T) {
 	for _, tt := range taskTestCases {
 		t.Run(tt.name, func(t *testing.T) {
 			task1 := NewGoTask(tt.funcPath, tt.arg)
-			*task1.getID() = tt.id
 			task2 := NewGoTask(tt.funcPath, tt.arg)
-			*task2.getID() = tt.id
 
 			data, err := task1.Serialize()
 			if err != nil {
