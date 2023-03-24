@@ -76,7 +76,7 @@ func (h *Handler) Call(payload []byte) (result []reflect.Value, err error) {
 	if h.argCount > 0 && len(payload) > 0 {
 		err := msgpack.UnmarshalAsArray(payload, h.arg)
 		if err != nil {
-			log.Errorf("unmarshal payload error: %v", err)
+			log.Errorf("Failed to unmarshal payload: %v", err)
 			return nil, err
 		}
 	}

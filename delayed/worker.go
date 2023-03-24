@@ -84,6 +84,7 @@ func (w *Worker) Run() {
 	defer func() { atomic.StoreUint32(&w.status, StatusStopped) }()
 
 	w.KeepAlive()
+	defer w.Die()
 
 	w.registerSignals()
 	defer w.unregisterSignals()
@@ -172,6 +173,14 @@ func (w *Worker) KeepAlive() {
 
 func (w *Worker) keepAlive() {
 	err := w.queue.keepAlive()
+	if err != nil {
+		log.Error(err)
+	}
+}
+
+// Die marks the worker as dead.
+func (w *Worker) Die() {
+	err := w.queue.die()
 	if err != nil {
 		log.Error(err)
 	}
